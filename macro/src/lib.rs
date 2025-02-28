@@ -111,7 +111,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         #[doc = "`]"]
         pub struct #wrapper_ident<'a> {
             ptr: *mut #ident,
-            phantom: core::marker::PhantomData<&'a mut ()>,
+            phantom: core::marker::PhantomData<&'a ()>,
         }
 
         impl #wrapper_ident<'_> {
@@ -257,7 +257,7 @@ impl FieldParser {
                 let mut segments = type_path.path.segments.clone();
 
                 if let Some(last_segment) = segments.last_mut() {
-                    // P#repend "Mmio" to the last segment's identifier
+                    // Prepend "Mmio" to the last segment's identifier
                     let new_ident = syn::Ident::new(
                         &format!("Mmio{}", last_segment.ident),
                         last_segment.span(),
@@ -284,7 +284,7 @@ impl FieldParser {
                     #[doc = ""]
                     #[doc = "The lifetime of the returned inner MMIO block is tied to the "]
                     #[doc = "lifetime of this structure"]
-                    pub const fn #field_ident(&mut self) -> #inner_mmio_path<'_> {
+                    pub fn #field_ident(&mut self) -> #inner_mmio_path<'_> {
                         unsafe {
                             self.#steal_func_name()
                         }
@@ -301,10 +301,10 @@ impl FieldParser {
                     #[doc = "If you create multiple instances of this handle at the same time,"]
                     #[doc = "you are responsible for ensuring that there are no read-modify-write"]
                     #[doc = "races on any of the registers."]
-                    pub const unsafe fn #steal_func_name(&mut self) -> #inner_mmio_path<'static> {
-                        #inner_mmio_path {
-                            ptr: unsafe { &mut (*self.ptr).#field_ident },
-                            phantom: core::marker::PhantomData,
+                    pub unsafe fn #steal_func_name(&mut self) -> #inner_mmio_path<'static> {
+                        let ptr = unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) };
+                        unsafe {
+                            #type_path::new_mmio(ptr)
                         }
                     }
                 }
