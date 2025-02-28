@@ -5,7 +5,7 @@ use proc_macro_error2::{abort, abort_call_site, proc_macro_error};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Field, Fields,
-    Ident, Meta, Path, Token,
+    Ident, Meta, Path, Token, TypeArray, TypePath,
 };
 
 #[proc_macro_error]
@@ -98,7 +98,6 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                 #wrapper_ident {
                     ptr,
                     phantom: core::marker::PhantomData,
-                    //# ( #additional_inner_field_ctors ), *
                 }
             }
         })
@@ -191,56 +190,15 @@ impl FieldParser {
         // use ReadWrite for anything not otherwise marked
         let access = access.unwrap_or(Access::ReadWrite);
 
-        // TODO: check the type here. If it's an array, we need an array function
-
-        let pointer_fn_name = format_ident!("pointer_to_{}", field_ident);
-        let read_fn_name = format_ident!("read_{}", field_ident);
-        let write_fn_name = format_ident!("write_{}", field_ident);
-        let modify_fn_name = format_ident!("modify_{}", field_ident);
-        let ty = &field.ty;
-
-        let mut output = quote! {
-            #[doc = "Obtain a pointer to the `"]
-            #[doc = stringify!(#field_ident)]
-            #[doc = "` register."]
-            #[doc = ""]
-            #[doc = "Never create a reference from this pointer - only use read/write/read_volatile/write_volatile methods on it."]
-            pub fn #pointer_fn_name(&mut self) -> *mut #ty{
-                unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) }
+        let mut output = TokenStream::new();
+        match &field.ty {
+            syn::Type::Array(type_array) => {
+                self.generate_array_access_methods(access, field_ident, type_array, &mut output);
             }
-
-            #[doc = "Read the `"]
-            #[doc = stringify!(#field_ident)]
-            #[doc = "` register."]
-            pub fn #read_fn_name(&mut self) -> #ty {
-                let addr = self.#pointer_fn_name();
-                unsafe {
-                    addr.read_volatile()
-                }
+            syn::Type::Path(type_path) => {
+                self.generate_field_access_methods(access, field_ident, type_path, &mut output);
             }
-        };
-
-        if access == Access::ReadWrite {
-            output.append_all(quote! {
-                #[doc = "Write the `"]
-                #[doc = stringify!(#field_ident)]
-                #[doc = "` register."]
-                pub fn #write_fn_name(&mut self, value: #ty) {
-                    let addr = self.#pointer_fn_name();
-                    unsafe {
-                        addr.write_volatile(value)
-                    }
-                }
-
-                #[doc = "Read-Modify-Write the `"]
-                #[doc = stringify!(#field_ident)]
-                #[doc = "` register."]
-                pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#ty) -> #ty {
-                    let value = self. #read_fn_name();
-                    let new_value = f(value);
-                    self. #write_fn_name(new_value);
-                }
-            });
+            _ => (),
         }
 
         output
@@ -316,6 +274,203 @@ impl FieldParser {
                     field.to_token_stream()
                 );
             }
+        }
+    }
+    fn generate_field_access_methods(
+        &self,
+        access: Access,
+        field_ident: &Ident,
+        type_path: &TypePath,
+        access_methods: &mut TokenStream,
+    ) {
+        let pointer_fn_name = format_ident!("pointer_to_{}", field_ident);
+        let read_fn_name = format_ident!("read_{}", field_ident);
+        let write_fn_name = format_ident!("write_{}", field_ident);
+        let modify_fn_name = format_ident!("modify_{}", field_ident);
+
+        access_methods.append_all(quote! {
+            #[doc = "Obtain a pointer to the `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = "` register."]
+            #[doc = ""]
+            #[doc = "Never create a reference from this pointer - only use read/write/read_volatile/write_volatile methods on it."]
+            pub fn #pointer_fn_name(&mut self) -> *mut #type_path{
+                unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) }
+            }
+
+            #[doc = "Read the `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = "` register."]
+            pub fn #read_fn_name(&mut self) -> #type_path {
+                let addr = self.#pointer_fn_name();
+                unsafe {
+                    addr.read_volatile()
+                }
+            }
+        });
+
+        if access == Access::ReadWrite {
+            access_methods.append_all(quote! {
+                #[doc = "Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                pub fn #write_fn_name(&mut self, value: #type_path) {
+                    let addr = self.#pointer_fn_name();
+                    unsafe {
+                        addr.write_volatile(value)
+                    }
+                }
+
+                #[doc = "Read-Modify-Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#type_path) -> #type_path {
+                    let value = self. #read_fn_name();
+                    let new_value = f(value);
+                    self. #write_fn_name(new_value);
+                }
+            });
+        }
+    }
+    fn generate_array_access_methods(
+        &self,
+        access: Access,
+        field_ident: &Ident,
+        type_array: &TypeArray,
+        access_methods: &mut TokenStream,
+    ) {
+        let array_type = &type_array.elem;
+        let array_len = &type_array.len;
+        let pointer_fn_name = format_ident!("pointer_to_{}_start", field_ident);
+        let read_fn_name = format_ident!("read_{}", field_ident);
+        let unchecked_read_fn_name = format_ident!("read_{}_unchecked", field_ident);
+        let write_fn_name = format_ident!("write_{}", field_ident);
+        let unchecked_write_fn_name = format_ident!("write_{}_unchecked", field_ident);
+        let unchecked_modify_fn_name = format_ident!("modify_{}_unchecked", field_ident);
+        let modify_fn_name = format_ident!("modify_{}", field_ident);
+        let error_type = quote! { derive_mmio::OutOfBoundsError };
+
+        access_methods.append_all(quote! {
+            #[doc = "Obtain a pointer to the `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = "` first entry register array."]
+            #[doc = ""]
+            #[doc = "Never create a reference from this pointer - only use read/write/read_volatile/write_volatile methods on it."]
+            #[doc = "The `add` method method of the pointer can be used to access entries of the array at higher indices."]
+            #[inline(always)]
+            pub const fn #pointer_fn_name(&mut self) -> *mut #array_type{
+                unsafe { (*self.ptr).#field_ident.as_mut_ptr() }
+            }
+
+            #[doc = "Read the `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = ""]
+            #[doc = "` register."]
+            #[doc = ""]
+            #[doc = "# Safety "]
+            #[doc = ""]
+            #[doc = "This function does not perform bounds checking and performs a volatile "]
+            #[doc = "read on a raw pointer with the given offset which might lead to "]
+            #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
+            #[inline(always)]
+            pub unsafe fn #unchecked_read_fn_name(&mut self, index: usize) -> #array_type {
+                // Safety: We're performing a volatile read from a valid memory location
+                unsafe {
+                    core::ptr::read_volatile(self.#pointer_fn_name().add(index))
+                }
+            }
+
+            #[doc = "Read the `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = ""]
+            #[doc = "` register."]
+            #[doc = ""]
+            #[doc = "This function also peforms bound checking."]
+            #[inline(always)]
+            pub fn #read_fn_name(
+                &mut self,
+                index: usize
+            ) -> Result<#array_type, #error_type> {
+                if index >= #array_len {
+                    return Err(#error_type(index));
+                }
+                // Safety: Correct index was verified.
+                Ok(unsafe { self.#unchecked_read_fn_name(index) })
+            }
+        });
+
+        if access == Access::ReadWrite {
+            access_methods.append_all(quote! {
+                #[doc = "Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                #[doc = "# Safety "]
+                #[doc = ""]
+                #[doc = "This function does not perform bounds checking and performs a volatile "]
+                #[doc = "write on a raw pointer with the given offset which might lead to "]
+                #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
+                #[inline(always)]
+                pub unsafe fn #unchecked_write_fn_name(&mut self, index: usize, value: #array_type) {
+                    // Safety: We're performing a volatile read from a valid memory location
+                    unsafe {
+                        core::ptr::write_volatile(self.#pointer_fn_name().add(index), value)
+                    }
+                }
+
+                #[doc = "Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                #[doc = ""]
+                #[doc = "This function also peforms bound checking."]
+                #[inline(always)]
+                pub fn #write_fn_name(
+                    &mut self,
+                    index: usize,
+                    value: #array_type
+                ) -> Result<(), #error_type> {
+                    if index >= #array_len {
+                        return Err(#error_type(index));
+                    }
+                    // Safety: Bound check was performed.
+                    unsafe { self.#unchecked_write_fn_name(index, value) };
+                    Ok(())
+                }
+
+                #[doc = "Read-Modify-Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                #[doc = ""]
+                #[doc = "This function does not perform bounds checking and performs a volatile "]
+                #[doc = "read and a volatile write on a raw pointer with the given offset which might lead to "]
+                #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
+                #[inline]
+                pub unsafe fn #unchecked_modify_fn_name<F>(
+                    &mut self,
+                    index: usize,
+                    f: F
+                ) where F: FnOnce(#array_type) -> #array_type {
+                    let value = self. #unchecked_read_fn_name(index);
+                    let new_value = f(value);
+                    self. #unchecked_write_fn_name(index, new_value);
+                }
+
+                #[doc = "Read-Modify-Write the `"]
+                #[doc = stringify!(#field_ident)]
+                #[doc = "` register."]
+                #[doc = ""]
+                #[doc = "This function also peforms bound checking."]
+                #[inline]
+                pub fn #modify_fn_name(
+                    &mut self,
+                    index: usize,
+                    f: impl FnOnce(#array_type) -> #array_type,
+                ) -> Result<(), #error_type> {
+                    let value = self. #read_fn_name(index)?;
+                    // Unwrap is okay here, the index is checked in the read call.
+                    self.#write_fn_name(index, f(value)).unwrap();
+                    Ok(())
+                }
+            });
         }
     }
 }

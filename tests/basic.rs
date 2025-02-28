@@ -39,7 +39,7 @@ fn main() {
     });
     assert!(mmio_uart.read_control() == 32);
     assert_eq!(mmio_uart.read_status(), 0xF);
-    let ptr_to_u32s = ptr_raw as *const u32 ;
+    let ptr_to_u32s = ptr_raw as *const u32;
     assert_eq!(
         mmio_uart.pointer_to_status(),
         ptr_to_u32s.wrapping_add(2) as _

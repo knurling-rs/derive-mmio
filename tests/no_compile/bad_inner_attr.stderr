@@ -1,7 +1,7 @@
-error[E0308]: mismatched types
- --> tests/cases/padding_forbidden.rs:1:10
+error: `#[mmio(...)]` only supports 'RO', 'RW' and 'inner' options
+ --> tests/no_compile/bad_inner_attr.rs:1:10
   |
 1 | #[derive(derive_mmio::Mmio)]
-  |          ^^^^^^^^^^^^^^^^^ expected an array with a size of 7, found one with a size of 8
+  |          ^^^^^^^^^^^^^^^^^
   |
   = note: this error originates in the derive macro `derive_mmio::Mmio` (in Nightly builds, run with -Z macro-backtrace for more info)

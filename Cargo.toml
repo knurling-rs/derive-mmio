@@ -13,6 +13,12 @@ version = "0.3.0"
 
 [dependencies]
 derive-mmio-macro = { version = "=0.3.0", path = "./macro" }
+thiserror = { version = "2", default-features = false }
+defmt = { version = "0.3", optional = true }
+
+[features]
+default = ["std"]
+std = ["thiserror/std"]
 
 [dev-dependencies]
 trybuild = "1"

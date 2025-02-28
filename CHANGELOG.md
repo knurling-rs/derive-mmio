@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Allow field types which also derive `Mmio` as long as they are annotated with
   `#[mmio(inner)]`
+- Added support for array fields
 
 ## [v0.3.0] - 2025-02-26
 

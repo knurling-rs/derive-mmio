@@ -1,5 +1,5 @@
 error[E0599]: no method named `write_status` found for struct `MmioUart` in the current scope
-  --> tests/cases/read_only.rs:16:15
+  --> tests/no_compile/read_only.rs:16:15
    |
 1  | #[derive(derive_mmio::Mmio)]
    |          ----------------- method `write_status` not found for this struct

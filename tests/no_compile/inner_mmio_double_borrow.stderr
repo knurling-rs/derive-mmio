@@ -1,5 +1,5 @@
 error[E0499]: cannot borrow `mmio_uart` as mutable more than once at a time
-  --> tests/cases/inner_mmio_double_borrow.rs:36:13
+  --> tests/no_compile/inner_mmio_double_borrow.rs:36:13
    |
 35 |     let mut bank0 = mmio_uart.bank_0();
    |                     --------- first mutable borrow occurs here

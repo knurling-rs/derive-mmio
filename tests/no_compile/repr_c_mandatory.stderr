@@ -1,5 +1,5 @@
-error: `#[mmio(...)]` only supports 'RO', 'RW' and 'inner' options
- --> tests/cases/bad_inner_attr.rs:1:10
+error: `#[derive(Mmio)]` only works on repr(C) types
+ --> tests/no_compile/repr_c_mandatory.rs:1:10
   |
 1 | #[derive(derive_mmio::Mmio)]
   |          ^^^^^^^^^^^^^^^^^
