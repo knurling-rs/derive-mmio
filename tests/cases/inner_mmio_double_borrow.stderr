@@ -1,0 +1,9 @@
+error[E0499]: cannot borrow `mmio_uart` as mutable more than once at a time
+  --> tests/cases/inner_mmio_double_borrow.rs:36:13
+   |
+35 |     let mut bank0 = mmio_uart.bank_0();
+   |                     --------- first mutable borrow occurs here
+36 |     let _ = mmio_uart.bank_1().read_data();
+   |             ^^^^^^^^^ second mutable borrow occurs here
+37 |     let _ = bank0.read_data();
+   |             ----- first borrow later used here
