@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 name = "derive-mmio"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/derive-mmio"
+rust-version = "1.70"
 version = "0.3.0"
-rust-version = "1.84.1"
 
 [dependencies]
 derive-mmio-macro = { version = "=0.3.0", path = "./macro" }
