@@ -167,7 +167,7 @@ impl FieldParser {
                 for meta in nested {
                     if let Meta::Path(path) = meta {
                         if path.is_ident("inner") {
-                            return self.handle_mmio_attribute_inner(field, field_ident);
+                            return self.generate_access_method_for_inner_block(field, field_ident);
                         } else if path.is_ident("RO") {
                             if access.replace(Access::ReadOnly).is_some() {
                                 abort_call_site!("`#[mmio(...)]` found second access argument");
@@ -246,7 +246,8 @@ impl FieldParser {
         output
     }
 
-    pub fn handle_mmio_attribute_inner(
+    /// Generate access methods for fields that are MMIO blocks.
+    pub fn generate_access_method_for_inner_block(
         &mut self,
         field: &Field,
         field_ident: &Ident,
