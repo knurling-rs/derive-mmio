@@ -67,21 +67,57 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let access_methods_quoted = quote! {
         #(#access_methods)*
     };
+
+    let bound_checks = &field_parser.bound_checks;
+    let mut bound_check_func = TokenStream::new();
+    if !bound_checks.is_empty() {
+        bound_check_func.append_all(quote! {
+            #[doc(hidden)]
+            const fn __bound_check_mmio() {
+                #(#bound_checks;)*
+            }
+        });
+    }
+    let private_generic_ctor = quote! {
+        #[doc = "Create a new handle to this peripheral."]
+        #[doc = ""]
+        #[doc = "This function has a signature with a leading _ to avoid polluting the user namespace."]
+        #[doc = "You can call this function in your own (public) interface to implement your"]
+        #[doc = "own constructors."]
+        #[doc = ""]
+        #[doc = "# Safety"]
+        #[doc = ""]
+        #[doc = "The pointer given must have suitable alignment, and point to an object"]
+        #[doc = "which matches the layout given by the structure pointed to."]
+        #[doc = ""]
+        #[doc = "If you create multiple instances of this handle at the same time,"]
+        #[doc = "you are responsible for ensuring that there are no read-modify-write"]
+        #[doc = "races on any of the registers."]
+        pub(crate) const unsafe fn _new_mmio(ptr: *mut #ident) -> #wrapper_ident<'static> {
+            #wrapper_ident {
+                ptr,
+                phantom: core::marker::PhantomData,
+            }
+        }
+    };
     let field_sizes = fields.named.iter().map(field_size);
 
     let constructors = if omit_ctor {
         None
     } else {
-        let bound_checks = &field_parser.bound_checks;
         Some(quote! {
             #[doc = "Create a new handle to this peripheral given an address."]
             #[doc = ""]
             #[doc = "# Safety"]
             #[doc = ""]
-            #[doc = "See the safety notes for [`new_mmio`]."]
+            #[doc = "The pointer given must have suitable alignment, and point to an object"]
+            #[doc = "which matches the layout given by the structure pointed to."]
+            #[doc = ""]
+            #[doc = "If you create multiple instances of this handle at the same time,"]
+            #[doc = "you are responsible for ensuring that there are no read-modify-write"]
+            #[doc = "races on any of the registers."]
             pub const unsafe fn new_mmio_at(addr: usize) -> #wrapper_ident<'static> {
-                # ( #bound_checks ) *
-                Self::new_mmio(addr as *mut #ident)
+                Self::_new_mmio(addr as *mut #ident)
             }
 
             #[doc = "Create a new handle to this peripheral."]
@@ -95,10 +131,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             #[doc = "you are responsible for ensuring that there are no read-modify-write"]
             #[doc = "races on any of the registers."]
             pub const unsafe fn new_mmio(ptr: *mut #ident) -> #wrapper_ident<'static> {
-                #wrapper_ident {
-                    ptr,
-                    phantom: core::marker::PhantomData,
-                }
+                Self::_new_mmio(ptr)
             }
         })
     };
@@ -127,6 +160,10 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         unsafe impl derive_mmio::_MmioMarker for #wrapper_ident<'_> {}
 
         impl #ident {
+            #bound_check_func
+
+            #private_generic_ctor
+
             #constructors
         }
 
@@ -263,7 +300,7 @@ impl FieldParser {
                     pub unsafe fn #steal_func_name(&mut self) -> #inner_mmio_path<'static> {
                         let ptr = unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) };
                         unsafe {
-                            #type_path::new_mmio(ptr)
+                            #type_path::_new_mmio(ptr)
                         }
                     }
                 }

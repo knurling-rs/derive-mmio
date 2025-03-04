@@ -14,6 +14,14 @@ impl Uart {
             phantom: core::marker::PhantomData,
         }
     }
+
+    #[allow(dead_code)]
+    pub fn new_mmio_calling_private_generic_ctor() {
+        // This constructor will stil be generated.
+        unsafe {
+            Self::_new_mmio(0x10002000 as *mut Uart);
+        }
+    }
 }
 fn main() {
     // Can not really test this on a host environment. Simply verify that it builds..
