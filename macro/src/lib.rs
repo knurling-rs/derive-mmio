@@ -130,6 +130,20 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             // Must match expected size
             const _SIZE_CHECK: [(); #wrapper_ident::_FIELD_SIZE] = [(); core::mem::size_of::<#ident>()];
 
+            /// Unsafely clone the MMIO handle.
+            ///
+            /// # Safety
+            ///
+            /// This allows to create multiple instances of the same MMIO handle. The user must ensure
+            /// that these handles are not used concurrently in a way that leads to data races.
+            #[inline]
+            pub const unsafe fn clone(&self) -> Self {
+                Self {
+                    ptr: self.ptr,
+                    phantom: core::marker::PhantomData,
+                }
+            }
+
             #access_methods_quoted
         }
 
