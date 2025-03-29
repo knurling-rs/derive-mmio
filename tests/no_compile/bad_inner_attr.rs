@@ -1,7 +1,7 @@
 #[derive(derive_mmio::Mmio)]
 #[repr(C)]
 struct Uart {
-    #[mmio(RX)]
+    #[mmio(RW)]
     status: u32,
 }
 

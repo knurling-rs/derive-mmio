@@ -1,7 +1,5 @@
-error: `#[mmio(...)]` only supports 'RO', 'RW' and 'inner' options
- --> tests/no_compile/bad_inner_attr.rs:1:10
+error: `#[mmio(...)]` only supports 'Read', 'ReadWrite', 'Write', 'Modify' and 'inner' options
+ --> tests/no_compile/bad_inner_attr.rs:4:5
   |
-1 | #[derive(derive_mmio::Mmio)]
-  |          ^^^^^^^^^^^^^^^^^
-  |
-  = note: this error originates in the derive macro `derive_mmio::Mmio` (in Nightly builds, run with -Z macro-backtrace for more info)
+4 |     #[mmio(RW)]
+  |     ^

@@ -1,0 +1,14 @@
+error: `#[mmio(...)]` found second read argument
+ --> tests/no_compile/double_read.rs:5:5
+  |
+5 |     #[mmio(Read, PureRead)]
+  |     ^
+
+error[E0599]: no function or associated item named `new_mmio` found for struct `Uart` in the current scope
+  --> tests/no_compile/double_read.rs:13:40
+   |
+3  | struct Uart {
+   | ----------- function or associated item `new_mmio` not found for this struct
+...
+13 |     let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+   |                                        ^^^^^^^^ function or associated item not found in `Uart`

@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Compile time check for padding now works reliably
 - Add `no_ctors` attribute which allows the user to write custom constructors.
+- Reworked access modifiers. `RO` and `RW` were replaced by `PureRead`, `Read`, `Write`
+  and `Modify` access modifiers.
 
 ### Added
 

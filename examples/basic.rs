@@ -11,14 +11,17 @@
 #[derive(derive_mmio::Mmio)]
 #[repr(C)]
 pub struct Uart {
-    // this is read-write by default
+    // No access modifiers: PureRead / Write / Modify by default
     data: u32,
-    // you can be explicit if you like
-    #[mmio(RW)]
+    #[mmio(Read, Write, Modify)]
     control: u32,
-    // this field is read-only (no write_x or modify_x method)
-    #[mmio(RO)]
+    // this field is read-only, with no side effects for a read. Generated reader function
+    // does not mutably borrow the MMIO block.
+    #[mmio(PureRead)]
     status: u32,
+    // this field is read-only, but has side effects (e.g. read clears error bits)
+    #[mmio(Read)]
+    errors: u32,
     // this is ignored
     _reserved: u32,
     // this will introduce padding, which will fail the compilation
@@ -30,6 +33,7 @@ fn main() {
         data: 0xA,
         control: 0xC,
         status: 0xF,
+        errors: 0x2,
         _reserved: 0,
         //_reserved2: 0,
     };
@@ -52,4 +56,8 @@ fn main() {
 
     println!("status = {}", mmio_uart.read_status());
     println!("status register is @ {:p}", mmio_uart.pointer_to_status());
+
+    // Non mutable block, can still be used to perform pure reads.
+    let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    println!("status = {}", mmio_uart.read_status());
 }

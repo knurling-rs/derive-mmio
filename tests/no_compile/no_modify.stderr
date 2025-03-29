@@ -1,0 +1,8 @@
+error[E0599]: no method named `modify_uart` found for struct `MmioUart` in the current scope
+  --> tests/no_compile/no_modify.rs:14:15
+   |
+1  | #[derive(derive_mmio::Mmio)]
+   |          ----------------- method `modify_uart` not found for this struct
+...
+14 |     mmio_uart.modify_uart();
+   |               ^^^^^^^^^^^ method not found in `MmioUart<'_>`

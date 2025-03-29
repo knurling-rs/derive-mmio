@@ -45,8 +45,8 @@ fn main() {
     assert_eq!(bank1_data, 0x4);
 
     unsafe {
-        let mut inner_owned_for_p0 = mmio_uart.steal_bank_0();
-        let mut inner_owned_for_p1 = mmio_uart.steal_bank_0();
+        let inner_owned_for_p0 = mmio_uart.steal_bank_0();
+        let inner_owned_for_p1 = mmio_uart.steal_bank_0();
         // Can be used independently now.
         assert_eq!(inner_owned_for_p0.read_data(), 0x1);
         assert_eq!(inner_owned_for_p1.read_data(), 0x1);

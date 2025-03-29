@@ -109,8 +109,8 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             /// However, there are cases where this implementation might be incorrect, for example
             /// if an MMIO handle was created for a core-local private address.
             ///
-            /// In that case, it it is recommended to wrap the MMIO handle in a newtype structure
-            /// and [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
+            /// In that case, it it is recommended to [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
+            /// on the register block structure.
             #[inline]
             pub const unsafe fn new_mmio(ptr: *mut #ident) -> #wrapper_ident<'static> {
                 #wrapper_ident {
@@ -172,7 +172,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         /// However, there are cases where this [core::marker::Send] implementation might be
         /// invalid, for example if an MMIO handle was created for a core-local private address.
         ///
-        /// In that case, it it is recommended to un-implement [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
+        /// In that case, it it is recommended to [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
         /// on the register block structure.
         unsafe impl core::marker::Send for #wrapper_ident<'_> where #ident: core::marker::Send {}
 
@@ -193,15 +193,37 @@ fn field_size(field: &Field) -> TokenStream {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-enum Access {
-    ReadOnly,
-    ReadWrite,
-}
-
 #[derive(Default)]
 struct FieldParser {
     bound_checks: Vec<TokenStream>,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+enum ReadAccess {
+    // Pure reads, no side effects.
+    Pure,
+    // Normal read access with side effects.
+    #[default]
+    Normal,
+}
+
+#[derive(Debug, Default)]
+struct AccessModifiers {
+    read: Option<ReadAccess>,
+    write: bool,
+    modify: bool,
+}
+
+impl AccessModifiers {
+    pub fn convert_unmodified(&mut self) -> bool {
+        if self.read.is_none() && !self.write && !self.modify {
+            self.read = Some(ReadAccess::Pure);
+            self.write = true;
+            self.modify = true;
+            return true;
+        }
+        false
+    }
 }
 
 impl FieldParser {
@@ -212,14 +234,16 @@ impl FieldParser {
         field: &Field,
         field_ident: &Ident,
     ) -> TokenStream {
-        let mut access = None;
+        let mut access = AccessModifiers::default();
         for attr in field.attrs.iter() {
             if attr.path().is_ident("mmio") {
                 let Ok(nested) =
                     attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
                 else {
-                    abort_call_site!("`Failed to parse #[mmio(...)]`");
+                    abort!(attr.span(), "`Failed to parse #[mmio(...)]`");
                 };
+                let unexpected_meta_printout =
+                    "`#[mmio(...)]` only supports 'Read', 'ReadWrite', 'Write', 'Modify' and 'inner' options";
                 for meta in nested {
                     if let Meta::Path(path) = meta {
                         if path.is_ident("inner") {
@@ -228,28 +252,43 @@ impl FieldParser {
                                 field,
                                 field_ident,
                             );
-                        } else if path.is_ident("RO") {
-                            if access.replace(Access::ReadOnly).is_some() {
-                                abort_call_site!("`#[mmio(...)]` found second access argument");
+                        } else if path.is_ident("Read") {
+                            if access.read.is_some() {
+                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
                             }
-                        } else if path.is_ident("RW") {
-                            if access.replace(Access::ReadWrite).is_some() {
-                                abort_call_site!("`#[mmio(...)]` found second access argument");
+                            access.read = Some(ReadAccess::Normal);
+                        } else if path.is_ident("PureRead") {
+                            if access.read.is_some() {
+                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
                             }
+                            access.read = Some(ReadAccess::Pure);
+                        } else if path.is_ident("Write") {
+                            if access.write {
+                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                            }
+                            access.write = true;
+                        } else if path.is_ident("Modify") {
+                            if access.modify {
+                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                            }
+                            access.modify = true;
                         } else {
-                            abort_call_site!(
-                                "`#[mmio(...)]` only supports 'RO', 'RW' and 'inner' options"
-                            );
+                            abort!(attr.span(), unexpected_meta_printout);
                         }
                     } else {
-                        abort_call_site!("`#[mmio(...)]` only supports 'RO' and 'RW' options");
+                        abort!(attr.span(), unexpected_meta_printout);
                     }
                 }
             }
         }
 
-        // use ReadWrite for anything not otherwise marked
-        let access = access.unwrap_or(Access::ReadWrite);
+        if access.modify && (access.read.is_none() || !access.write) {
+            abort!(
+                field.span(),
+                "Detected Modify field attribute without read and/or write access specifiers"
+            );
+        }
+        access.convert_unmodified();
 
         let mut output = TokenStream::new();
         match &field.ty {
@@ -355,7 +394,7 @@ impl FieldParser {
     fn generate_field_access_methods(
         &self,
         ident: &Ident,
-        access: Access,
+        access: AccessModifiers,
         field_ident: &Ident,
         type_path: &TypePath,
         access_methods: &mut TokenStream,
@@ -375,20 +414,24 @@ impl FieldParser {
             pub fn #pointer_fn_name(&mut self) -> *mut #type_path{
                 unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) }
             }
-
-            #[doc = "Read the "]
-            #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
-            #[doc = " register."]
-            #[inline(always)]
-            pub fn #read_fn_name(&mut self) -> #type_path {
-                let addr = self.#pointer_fn_name();
-                unsafe {
-                    addr.read_volatile()
-                }
-            }
         });
+        if let Some(read_access) = access.read {
+            let opt_mut = (read_access == ReadAccess::Normal).then_some(quote! { mut });
 
-        if access == Access::ReadWrite {
+            access_methods.append_all(quote! {
+                #[doc = "Read the "]
+                #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
+                #[doc = " register."]
+                #[inline(always)]
+                pub fn #read_fn_name(&#opt_mut self) -> #type_path {
+                    let addr = unsafe { core::ptr::addr_of!((*self.ptr).#field_ident) };
+                    unsafe {
+                        addr.read_volatile()
+                    }
+                }
+            });
+        }
+        if access.write {
             access_methods.append_all(quote! {
                 #[doc = "Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
@@ -400,23 +443,27 @@ impl FieldParser {
                         addr.write_volatile(value)
                     }
                 }
-
-                #[doc = "Read-Modify-Write the "]
-                #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
-                #[doc = " register."]
-                #[inline]
-                pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#type_path) -> #type_path {
-                    let value = self. #read_fn_name();
-                    let new_value = f(value);
-                    self. #write_fn_name(new_value);
-                }
             });
         }
+        if access.modify {
+            access_methods.append_all(quote! {
+            #[doc = "Read-Modify-Write the "]
+            #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
+            #[doc = " register."]
+            #[inline]
+            pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#type_path) -> #type_path {
+                let value = self. #read_fn_name();
+                let new_value = f(value);
+                self. #write_fn_name(new_value);
+            }
+        });
+        }
     }
+
     fn generate_array_access_methods(
         &self,
         ident: &Ident,
-        access: Access,
+        access: AccessModifiers,
         field_ident: &Ident,
         type_array: &TypeArray,
         access_methods: &mut TokenStream,
@@ -443,43 +490,53 @@ impl FieldParser {
             pub fn #pointer_fn_name(&mut self) -> *mut #array_type{
                 unsafe { (*self.ptr).#field_ident.as_mut_ptr() }
             }
-
-            #[doc = "Read the "]
-            #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
-            #[doc = " register."]
-            #[doc = ""]
-            #[doc = "# Safety "]
-            #[doc = ""]
-            #[doc = "This function does not perform bounds checking and performs a volatile "]
-            #[doc = "read on a raw pointer with the given offset which might lead to "]
-            #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
-            #[inline(always)]
-            pub unsafe fn #unchecked_read_fn_name(&mut self, index: usize) -> #array_type {
-                // Safety: We're performing a volatile read from a valid memory location
-                unsafe {
-                    core::ptr::read_volatile(self.#pointer_fn_name().add(index))
-                }
-            }
-
-            #[doc = "Read the "]
-            #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
-            #[doc = " register."]
-            #[doc = ""]
-            #[doc = "This function also peforms bound checking."]
-            #[inline]
-            pub fn #read_fn_name(
-                &mut self,
-                index: usize
-            ) -> Result<#array_type, #error_type> {
-                if index >= #array_len {
-                    return Err(#error_type(index));
-                }
-                // Safety: Correct index was verified.
-                Ok(unsafe { self.#unchecked_read_fn_name(index) })
-            }
         });
 
-        if access == Access::ReadWrite {
+        if let Some(read_access) = access.read {
+            let mut opt_mut = TokenStream::new();
+            if read_access == ReadAccess::Normal {
+                opt_mut.append_all(quote! { mut });
+            }
+            access_methods.append_all(quote! {
+                #[doc = "Read the "]
+                #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
+                #[doc = " register."]
+                #[doc = ""]
+                #[doc = "# Safety "]
+                #[doc = ""]
+                #[doc = "This function does not perform bounds checking and performs a volatile "]
+                #[doc = "read on a raw pointer with the given offset which might lead to "]
+                #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
+                #[inline(always)]
+                pub unsafe fn #unchecked_read_fn_name(&#opt_mut self, index: usize) -> #array_type {
+                    let ptr = unsafe { (*self.ptr).#field_ident.as_mut_ptr() };
+                    // Safety: We're performing a volatile read from a valid memory location
+                    unsafe {
+                        core::ptr::read_volatile(ptr.add(index))
+                    }
+                }
+
+                #[doc = "Read the "]
+                #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
+                #[doc = " register."]
+                #[doc = ""]
+                #[doc = "This function also peforms bound checking."]
+                #[inline]
+                pub fn #read_fn_name(
+                    &#opt_mut self,
+                    index: usize
+                ) -> Result<#array_type, #error_type> {
+                    if index >= #array_len {
+                        return Err(#error_type(index));
+                    }
+
+                    // Safety: Correct index was verified.
+                    Ok(unsafe { self.#unchecked_read_fn_name(index) })
+                }
+            });
+        }
+
+        if access.write {
             access_methods.append_all(quote! {
                 #[doc = "Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
@@ -515,7 +572,11 @@ impl FieldParser {
                     unsafe { self.#unchecked_write_fn_name(index, value) };
                     Ok(())
                 }
+            });
+        }
 
+        if access.modify {
+            access_methods.append_all(quote! {
                 #[doc = "Read-Modify-Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
                 #[doc = " register."]

@@ -10,7 +10,6 @@ mod inner {
     #[derive(derive_mmio::Mmio)]
     #[repr(C)]
     pub struct UartBank {
-        // this is read-write by default
         data: u32,
         status: u32,
     }
@@ -28,7 +27,6 @@ mod inner {
 #[derive(derive_mmio::Mmio)]
 #[repr(C)]
 pub struct Uart {
-    // you can be explicit if you like
     control: u32,
     #[mmio(inner)]
     bank_0: inner::UartBank,

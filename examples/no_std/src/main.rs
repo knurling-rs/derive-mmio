@@ -8,7 +8,7 @@ mod inner {
         // this is read-write by default
         data: u32,
         // This register is read-only
-        #[mmio(RO)]
+        #[mmio(Read)]
         status: u32,
     }
 }
@@ -17,7 +17,7 @@ mod inner {
 #[repr(C)]
 struct Uart {
     // This is explicitly read-write
-    #[mmio(RW)]
+    #[mmio(Read, Write)]
     control: u32,
     #[mmio(inner)]
     bank_0: inner::UartBank,

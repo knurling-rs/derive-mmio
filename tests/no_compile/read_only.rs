@@ -2,7 +2,7 @@
 #[repr(C)]
 struct Uart {
     // this field is read-only (no write_x or modify_x method)
-    #[mmio(RO)]
+    #[mmio(PureRead)]
     status: u32,
 }
 
