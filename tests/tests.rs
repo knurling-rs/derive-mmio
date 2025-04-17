@@ -8,6 +8,7 @@ fn all_tests() {
 
     t.compile_fail("tests/no_compile/no_modify.rs");
     t.compile_fail("tests/no_compile/read_only.rs");
+    t.compile_fail("tests/no_compile/inner_only_shared.rs");
     t.compile_fail("tests/no_compile/double_read.rs");
     t.compile_fail("tests/no_compile/duplicate_field_attr.rs");
     t.compile_fail("tests/no_compile/modify_standalone.rs");

@@ -51,4 +51,21 @@ fn main() {
         assert_eq!(inner_owned_for_p0.read_data(), 0x1);
         assert_eq!(inner_owned_for_p1.read_data(), 0x1);
     }
+
+    // Shared inner block, can only use shared API.
+    let bank0_shared = mmio_uart.bank_0_shared();
+    assert_eq!(bank0_shared.read_status(), 0x5);
+    assert_eq!(bank0_shared.read_data(), 0x1);
+    // Can also be really explicit.
+    assert_eq!(bank0_shared.inner().read_data(), 0x1);
+
+    unsafe {
+        let bank0_shared_0 = mmio_uart.steal_bank_0_shared();
+        let bank0_shared_1 = mmio_uart.steal_bank_0_shared();
+        // Can be used independently now.
+        assert_eq!(bank0_shared_0.read_data(), 0x1);
+        assert_eq!(bank0_shared_1.read_data(), 0x1);
+        // Can also be really explicit.
+        assert_eq!(bank0_shared_0.inner().read_data(), 0x1);
+    }
 }

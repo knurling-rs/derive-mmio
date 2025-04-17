@@ -63,4 +63,8 @@ fn main() {
     assert_eq!(bank1_data, 0x2);
     let bank1_data = mmio_uart.bank_1().read_status();
     assert_eq!(bank1_data, 0x3);
+
+    // Can only use shared API here.
+    let bank0_shared = mmio_uart.bank_0_shared();
+    assert_eq!(bank0_shared.read_data(), 0x42);
 }
