@@ -15,6 +15,8 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let mut is_repr_c = false;
     let mut omit_ctor = false;
+    let mut const_ptr = false;
+    let mut const_inner = false;
     'attr: for attr in input.attrs.iter() {
         if attr.path().is_ident("mmio") {
             if let Meta::List(list) = &attr.meta {
@@ -23,7 +25,17 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         omit_ctor = true;
                         return Ok(());
                     }
-                    Err(meta.error("invalid content of mmio attribute, only expected `no_ctors`"))
+                    if meta.path.is_ident("ConstPtr") {
+                        const_ptr = true;
+                        return Ok(());
+                    }
+                    if meta.path.is_ident("ConstInner") {
+                        const_inner = true;
+                        return Ok(());
+                    }
+                    Err(meta.error(
+                        "invalid content of mmio attribute, allowed values: `no_ctors`, `ConstPtr`, `ConstInner`"
+                    ))
                 }) {
                     abort!(e);
                 };
@@ -55,7 +67,11 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         abort_call_site!("`#[derive(Mmio)]` only supports structs with named fields");
     };
 
-    let mut field_parser = FieldParser::default();
+    let config = FieldConfig {
+        const_ptr,
+        const_inner,
+    };
+    let mut field_parser = FieldParser::new(config);
     // process the input to create the fragments we want
     let access_methods = fields
         .named
@@ -193,11 +209,6 @@ fn field_size(field: &Field) -> TokenStream {
     }
 }
 
-#[derive(Default)]
-struct FieldParser {
-    bound_checks: Vec<TokenStream>,
-}
-
 #[derive(Debug, Default, PartialEq, Eq)]
 enum ReadAccess {
     // Pure reads, no side effects.
@@ -226,7 +237,23 @@ impl AccessModifiers {
     }
 }
 
+struct FieldConfig {
+    pub const_ptr: bool,
+    pub const_inner: bool,
+}
+
+struct FieldParser {
+    bound_checks: Vec<TokenStream>,
+    config: FieldConfig,
+}
+
 impl FieldParser {
+    pub fn new(config: FieldConfig) -> Self {
+        Self {
+            bound_checks: Vec::new(),
+            config,
+        }
+    }
     /// Convert a field into a set of methods that operate on that field
     fn generate_access_methods(
         &mut self,
@@ -360,6 +387,10 @@ impl FieldParser {
         array_type: &TypeArray,
         element_type: &TypePath,
     ) -> TokenStream {
+        let mut const_token = TokenStream::new();
+        if self.config.const_inner {
+            const_token.extend(quote! { const });
+        }
         let array_len = array_type.len.clone();
         // Get the segments of the type path
         let mut segments = element_type.path.segments.clone();
@@ -474,7 +505,7 @@ impl FieldParser {
             #[doc = "based on a raw pointer which might lead to undefined behaviour on invalid offsets."]
             #[doc = "Users MUST ensure that the offset is valid."]
             #[inline]
-            pub fn #field_ident_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
+            pub #const_token fn #field_ident_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
                 derive_mmio::SharedInner::__new_internal(
                     unsafe {
                         self.#private_steal_unchecked_func_name(index)
@@ -517,7 +548,7 @@ impl FieldParser {
             #[doc = "based on a raw pointer which might lead to undefined behaviour on invalid offsets."]
             #[doc = "Users MUST ensure that the offset is valid."]
             #[inline]
-            pub unsafe fn #steal_func_name_unchecked(&mut self, index: usize) -> #inner_mmio_path<'static> {
+            pub #const_token unsafe fn #steal_func_name_unchecked(&mut self, index: usize) -> #inner_mmio_path<'static> {
                 unsafe { self.#private_steal_unchecked_func_name(index) }
             }
 
@@ -562,7 +593,7 @@ impl FieldParser {
             #[doc = "based on a raw pointer which might lead to undefined behaviour on invalid offsets."]
             #[doc = "Users MUST ensure that the offset is valid."]
             #[inline]
-            pub unsafe fn #steal_func_name_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'static>> {
+            pub #const_token unsafe fn #steal_func_name_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'static>> {
                 derive_mmio::SharedInner::__new_internal(
                     unsafe {
                         self.#private_steal_unchecked_func_name(index)
@@ -579,7 +610,7 @@ impl FieldParser {
             }
 
             #[doc(hidden)]
-            unsafe fn #private_steal_unchecked_func_name(&self, index: usize) -> #inner_mmio_path<'static> {
+            #const_token unsafe fn #private_steal_unchecked_func_name(&self, index: usize) -> #inner_mmio_path<'static> {
                 let ptr = unsafe {(*self.ptr).#field_ident.as_mut_ptr().add(index) };
                 unsafe {
                     #element_type::new_mmio(ptr)
@@ -595,6 +626,10 @@ impl FieldParser {
         field_ident: &Ident,
         type_path: &TypePath,
     ) -> TokenStream {
+        let mut const_token = TokenStream::new();
+        if self.config.const_inner {
+            const_token.extend(quote! { const });
+        }
         // Get the segments of the type path
         let mut segments = type_path.path.segments.clone();
 
@@ -628,7 +663,7 @@ impl FieldParser {
             #[doc = "The lifetime of the returned inner MMIO block is tied to the"]
             #[doc = "lifetime of this structure"]
             #[inline]
-            pub fn #field_ident(&mut self) -> #inner_mmio_path<'_> {
+            pub #const_token fn #field_ident(&mut self) -> #inner_mmio_path<'_> {
                 unsafe {
                     self.#steal_func_name()
                 }
@@ -649,7 +684,7 @@ impl FieldParser {
             #[doc = "you are responsible for ensuring that there are no read-modify-write"]
             #[doc = "races on any of the registers."]
             #[inline]
-            pub fn #field_ident_shared(&self) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
+            pub #const_token fn #field_ident_shared(&self) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
                 derive_mmio::SharedInner::__new_internal(
                     unsafe {
                         self.#steal_func_unchecked_name()
@@ -669,7 +704,7 @@ impl FieldParser {
             #[doc = "you are responsible for ensuring that there are no read-modify-write"]
             #[doc = "races on any of the registers."]
             #[inline]
-            pub unsafe fn #steal_func_name(&mut self) -> #inner_mmio_path<'static> {
+            pub #const_token unsafe fn #steal_func_name(&mut self) -> #inner_mmio_path<'static> {
                 unsafe { self.#steal_func_unchecked_name() }
             }
 
@@ -688,7 +723,7 @@ impl FieldParser {
             #[doc = "you are responsible for ensuring that there are no read-modify-write"]
             #[doc = "races on any of the registers."]
             #[inline]
-            pub unsafe fn #steal_func_name_shared(&self) -> derive_mmio::SharedInner<#inner_mmio_path<'static>> {
+            pub #const_token unsafe fn #steal_func_name_shared(&self) -> derive_mmio::SharedInner<#inner_mmio_path<'static>> {
                 derive_mmio::SharedInner::__new_internal(
                     unsafe {
                         self.#steal_func_unchecked_name()
@@ -697,7 +732,7 @@ impl FieldParser {
             }
 
             #[doc(hidden)]
-            unsafe fn #steal_func_unchecked_name(&self) -> #inner_mmio_path<'static> {
+            #const_token unsafe fn #steal_func_unchecked_name(&self) -> #inner_mmio_path<'static> {
                 let ptr = unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) };
                 unsafe {
                     #type_path::new_mmio(ptr)
@@ -714,6 +749,10 @@ impl FieldParser {
         type_path: &TypePath,
         access_methods: &mut TokenStream,
     ) {
+        let mut const_token = TokenStream::new();
+        if self.config.const_ptr {
+            const_token.extend(quote! { const });
+        }
         let pointer_fn_name = format_ident!("pointer_to_{}", field_ident);
         let read_fn_name = format_ident!("read_{}", field_ident);
         let write_fn_name = format_ident!("write_{}", field_ident);
@@ -730,7 +769,7 @@ impl FieldParser {
             #[doc = ""]
             #[doc = "Never create a reference from this pointer - only use read/write/read_volatile/write_volatile methods on it."]
             #[inline(always)]
-            pub fn #pointer_fn_name(&self) -> *mut #type_path{
+            pub #const_token fn #pointer_fn_name(&self) -> *mut #type_path{
                 unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) }
             }
         });
@@ -787,6 +826,10 @@ impl FieldParser {
         type_array: &TypeArray,
         access_methods: &mut TokenStream,
     ) {
+        let mut const_token = TokenStream::new();
+        if self.config.const_ptr {
+            const_token.extend(quote! { const });
+        }
         let array_type = &type_array.elem;
         let array_len = &type_array.len;
         let pointer_fn_name = format_ident!("pointer_to_{}_start", field_ident);
@@ -810,7 +853,7 @@ impl FieldParser {
             #[doc = "Never create a reference from this pointer - only use read/write/read_volatile/write_volatile methods on it."]
             #[doc = "The `add` method method of the pointer can be used to access entries of the array at higher indices."]
             #[inline(always)]
-            pub fn #pointer_fn_name(&self) -> *mut #array_type{
+            pub #const_token fn #pointer_fn_name(&self) -> *mut #array_type{
                 unsafe { (*self.ptr).#field_ident.as_mut_ptr() }
             }
         });

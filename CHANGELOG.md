@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `#[mmio(ConstPtr)]` and `#[mmio(ConstInner)]` outer attributes which add `const`ness to
+  pointer getters and inner MMIO block getter functions respectively. Those require
+  Rust version 1.83.0 or higher.
+
 ### Changed
 
 - `pointer_to_${field}` methods only require shared access to the MMIO handle now.

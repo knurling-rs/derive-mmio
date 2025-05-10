@@ -6,7 +6,9 @@ fn all_tests() {
     t.pass("tests/no_ctors.rs");
     t.pass("tests/array_fields.rs");
     t.pass("tests/inner_mmio_array.rs");
-
+    if rustversion::cfg!(since(1.82)) {
+        t.pass("tests/constness.rs");
+    }
     t.compile_fail("tests/no_compile/no_modify.rs");
     t.compile_fail("tests/no_compile/read_only.rs");
     t.compile_fail("tests/no_compile/inner_only_shared.rs");
