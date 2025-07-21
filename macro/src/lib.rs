@@ -457,7 +457,7 @@ impl FieldParser {
             #[doc = "based on a raw pointer which might lead to undefined behaviour on invalid offsets."]
             #[doc = "Users MUST ensure that the offset is valid."]
             #[inline]
-            pub unsafe fn #field_ident_unchecked(&mut self, index: usize) -> #inner_mmio_path<'_> {
+            pub #const_token unsafe fn #field_ident_unchecked(&mut self, index: usize) -> #inner_mmio_path<'_> {
                 unsafe {
                     self.#steal_func_name_unchecked(index)
                 }
@@ -505,7 +505,7 @@ impl FieldParser {
             #[doc = "based on a raw pointer which might lead to undefined behaviour on invalid offsets."]
             #[doc = "Users MUST ensure that the offset is valid."]
             #[inline]
-            pub unsafe #const_token fn #field_ident_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
+            pub #const_token unsafe fn #field_ident_shared_unchecked(&self, index: usize) -> derive_mmio::SharedInner<#inner_mmio_path<'_>> {
                 derive_mmio::SharedInner::__new_internal(
                     unsafe {
                         self.#private_steal_unchecked_func_name(index)

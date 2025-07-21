@@ -14,6 +14,8 @@ struct Uart {
     control: u32,
     #[mmio(Inner)]
     bank_0: UartBank,
+    #[mmio(Inner)]
+    multi_banks: [UartBank; 2],
 }
 
 pub struct UartDriver {
@@ -35,6 +37,14 @@ impl UartDriver {
 
     pub const fn const_bank_0_shared(&mut self) -> derive_mmio::SharedInner<MmioUartBank<'_>> {
         self.regs.bank_0_shared()
+    }
+
+    pub const fn const_bank_1_shared(&mut self) -> MmioUartBank<'_> {
+        unsafe { self.regs.multi_banks_unchecked(0) }
+    }
+
+    pub const fn const_steal_bank_2_shared(&mut self) -> MmioUartBank<'static> {
+        unsafe { self.regs.steal_multi_banks_unchecked(1) }
     }
 
     pub const fn const_steal_bank_0_shared(
