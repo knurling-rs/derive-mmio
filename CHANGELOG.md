@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Keyword order for arrays of inner fields when used with with `const_inner`.
+
+### Added
+
+- Missing `const` for unchecked inner MMIO block getter when using `const_inner`.
+
 ## [v0.6.0] - 2025-07-11
 
 ### Changed
