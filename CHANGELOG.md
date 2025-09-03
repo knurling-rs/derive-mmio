@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.1] - 2025-09-03
+
 ### Fixed
 
 - Keyword order for arrays of inner fields when used with with `const_inner`.

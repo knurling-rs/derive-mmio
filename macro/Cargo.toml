@@ -8,7 +8,7 @@ name = "derive-mmio-macro"
 readme = "../README.md"
 repository = "https://github.com/knurling-rs/derive-mmio"
 rust-version = "1.70"
-version = "0.6.0"
+version = "0.6.1"
 
 [lib]
 proc-macro = true
