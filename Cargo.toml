@@ -9,10 +9,10 @@ name = "derive-mmio"
 readme = "README.md"
 repository = "https://github.com/knurling-rs/derive-mmio"
 rust-version = "1.70"
-version = "0.6.0"
+version = "0.6.1"
 
 [dependencies]
-derive-mmio-macro = { version = "=0.6.0", path = "./macro" }
+derive-mmio-macro = { version = "=0.6.1", path = "./macro" }
 defmt = { version = "1", optional = true }
 rustversion = "1"
 
