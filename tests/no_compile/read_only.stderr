@@ -9,6 +9,5 @@ error[E0599]: no method named `write_status` found for struct `MmioUart` in the 
    |
 help: there is a method `read_status` with a similar name
    |
-16 -     mmio_uart.write_status();
-16 +     mmio_uart.read_status();
-   |
+16 |     mmio_uart.read_status();
+   |               ~~~~~~~~~~~
