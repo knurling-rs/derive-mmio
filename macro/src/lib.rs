@@ -839,6 +839,7 @@ impl FieldParser {
         let unchecked_write_fn_name = format_ident!("write_{}_unchecked", field_ident);
         let unchecked_modify_fn_name = format_ident!("modify_{}_unchecked", field_ident);
         let modify_fn_name = format_ident!("modify_{}", field_ident);
+        let array_len_func = format_ident!("len_{}", field_ident);
         let error_type = quote! { derive_mmio::OutOfBoundsError };
 
         access_methods.append_all(quote! {
@@ -855,6 +856,16 @@ impl FieldParser {
             #[inline(always)]
             pub #const_token fn #pointer_fn_name(&self) -> *mut #array_type{
                 unsafe { (*self.ptr).#field_ident.as_mut_ptr() }
+            }
+        });
+
+        access_methods.append_all(quote! {
+            #[doc = "Length of the array `"]
+            #[doc = stringify!(#field_ident)]
+            #[doc = "`."]
+            #[inline]
+            pub const fn #array_len_func(&self) -> usize {
+                #array_len
             }
         });
 
