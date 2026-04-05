@@ -412,7 +412,7 @@ impl FieldParser {
         self.bound_checks.push(quote! {
             derive_mmio::is_mmio::<#inner_mmio_path>();
         });
-        let array_len_func = format_ident!("{}_array_len", field_ident);
+        let array_len_func = format_ident!("len_{}", field_ident);
         let field_ident_unchecked = format_ident!("{}_unchecked", field_ident);
 
         let field_ident_shared = format_ident!("{}_shared", field_ident);
@@ -601,7 +601,7 @@ impl FieldParser {
                 )
             }
 
-            #[doc = "Length of the inner MMIO array`"]
+            #[doc = "Length of the inner MMIO array `"]
             #[doc = stringify!(#field_ident)]
             #[doc = "`."]
             #[inline]
