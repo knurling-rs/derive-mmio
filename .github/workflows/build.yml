@@ -25,7 +25,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -45,7 +45,7 @@ jobs:
           - thumbv7em-none-eabihf
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -63,7 +63,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -86,7 +86,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install 1.95
@@ -104,7 +104,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install 1.95
@@ -140,7 +140,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
