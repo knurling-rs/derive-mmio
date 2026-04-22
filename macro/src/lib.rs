@@ -1,11 +1,11 @@
 //! The derive macro for the Mmio crate.
 
-use proc_macro2::TokenStream;
 use proc_macro_error2::{abort, abort_call_site, proc_macro_error};
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use proc_macro2::TokenStream;
+use quote::{ToTokens, TokenStreamExt, format_ident, quote};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Field, Fields,
-    Ident, Meta, Path, Token, TypeArray, TypePath,
+    Data, DeriveInput, Field, Fields, Ident, Meta, Path, Token, TypeArray, TypePath,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned,
 };
 
 #[proc_macro_error]
@@ -63,7 +63,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let Data::Struct(ref s) = input.data else {
         abort_call_site!("`#[derive(Mmio)]` only supports struct");
     };
-    let Fields::Named(ref fields) = &s.fields else {
+    let Fields::Named(fields) = &s.fields else {
         abort_call_site!("`#[derive(Mmio)]` only supports structs with named fields");
     };
 
@@ -269,8 +269,7 @@ impl FieldParser {
                 else {
                     abort!(attr.span(), "`Failed to parse #[mmio(...)]`");
                 };
-                let unexpected_meta_printout =
-                    "`#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options";
+                let unexpected_meta_printout = "`#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options";
                 for meta in nested {
                     if let Meta::Path(path) = meta {
                         if path.is_ident("Inner") {

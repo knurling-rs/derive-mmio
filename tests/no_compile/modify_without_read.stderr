@@ -7,7 +7,7 @@ error: Detected Modify field attribute without read and/or write access specifie
 error[E0599]: no function or associated item named `new_mmio` found for struct `Uart` in the current scope
   --> tests/no_compile/modify_without_read.rs:14:40
    |
-4  | struct Uart {
+ 4 | struct Uart {
    | ----------- function or associated item `new_mmio` not found for this struct
 ...
 14 |     let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };

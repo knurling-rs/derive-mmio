@@ -1,4 +1,4 @@
-error[E0133]: call to unsafe function `MmioUart::<'_>::read_array_unchecked` is unsafe and requires unsafe function or block
+error[E0133]: call to unsafe function `MmioUart::<'_>::read_array_unchecked` is unsafe and requires unsafe block
   --> tests/no_compile/array_safe_unchecked.rs:15:23
    |
 15 |     let _inner_bank = mmio_uart.read_array_unchecked(5);

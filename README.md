@@ -7,7 +7,7 @@ For more details about the framework check the documentation at
 
 ## MSRV
 
-The minimum supported Rust version is 1.76 (or Ferrocene 24.05). `derive-mmio`
+The minimum supported Rust version is 1.85 (or Ferrocene 25.08). `derive-mmio`
 is tested against the latest stable Rust version and the MSRV.
 
 ## Support
