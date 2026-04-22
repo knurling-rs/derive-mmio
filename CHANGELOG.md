@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `#[mmio(repr_c_wrapper)]` attribute that adds `#[repr(C)]` to the generated wrapper.
+
 ## [v0.6.1] - 2025-09-03
 
 ### Fixed

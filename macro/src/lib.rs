@@ -14,6 +14,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // validate our input
     let input = parse_macro_input!(input as DeriveInput);
     let mut is_repr_c = false;
+    let mut repr_c_wrapper = false;
     let mut omit_ctor = false;
     let mut const_ptr = false;
     let mut const_inner = false;
@@ -33,8 +34,12 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         const_inner = true;
                         return Ok(());
                     }
+                    if meta.path.is_ident("repr_c_wrapper") {
+                        repr_c_wrapper = true;
+                        return Ok(());
+                    }
                     Err(meta.error(
-                        "invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`"
+                        "invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`, `repr_c_wrapper`"
                     ))
                 }) {
                     abort!(e);
@@ -58,6 +63,11 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     if !is_repr_c {
         abort_call_site!("`#[derive(Mmio)]` only works on repr(C) types");
     }
+    let repr = if repr_c_wrapper {
+        quote!(#[repr(C)])
+    } else {
+        quote!()
+    };
     let ident = input.ident;
     let wrapper_ident = format_ident!("Mmio{}", ident);
     let Data::Struct(ref s) = input.data else {
@@ -144,6 +154,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         #[doc = "An MMIO wrapper for ["]
         #[doc = stringify!(#ident)]
         #[doc = "]"]
+        #repr
         pub struct #wrapper_ident<'a> {
             ptr: *mut #ident,
             phantom: core::marker::PhantomData<&'a ()>,

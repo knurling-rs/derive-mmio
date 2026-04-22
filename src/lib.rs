@@ -337,6 +337,8 @@ with `#[derive(Mmio)]`:
   Requires Rust 1.83.0 or higher.
 - `#[mmio(const_inner)]`: Const getter methods for inner MMIO blocks. Requires Rust 1.83.0 or
   higher.
+- `#[mmio(repr_c_wrapper)]`: Add `#[repr(C)]` to the generated wrapper. Useful for generating
+C bindings.
 
 ### Field attributes
 
