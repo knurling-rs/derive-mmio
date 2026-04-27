@@ -44,4 +44,10 @@ fn main() {
     assert_eq!(ro_array_1, 0x3);
     println!("MMIO read-only array[0]: 0x{:X}", ro_array_0);
     println!("MMIO read-only array[1]: 0x{:X}", ro_array_1);
+
+    // Get the length of the arrays
+    assert_eq!(mmio_uart.len_array_0(), 4);
+    assert_eq!(mmio_uart.len_array_1(), 4);
+    assert_eq!(mmio_uart.len_array_read_only(), 4);
+    assert_eq!(mmio_uart.len_array_write_only(), 2);
 }
