@@ -320,6 +320,10 @@ impl MmioUart {
     pub unsafe fn modify_bank_unchecked<F: FnOnce(u32) -> u32>(&mut self, index: usize, f: F) {
         // ...
     }
+
+    pub const fn len_bank(&self) -> usize {
+        4
+    }
 }
 ```
 

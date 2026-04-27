@@ -15,7 +15,7 @@ jobs:
     steps:
       - id: set-matrix
         run: |
-          echo 'rust_versions={"rust": ["stable", "1.70"]}' >> "$GITHUB_OUTPUT"
+          echo 'rust_versions={"rust": ["stable", "1.85"]}' >> "$GITHUB_OUTPUT"
 
   # Build the library
   build:
@@ -86,7 +86,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Install rust
+        run: |
+          rustup install 1.85
+          rustup default 1.85
       - run: cargo test
 
   # Build the docs for the library
