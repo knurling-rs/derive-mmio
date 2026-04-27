@@ -5,7 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## v0.6.next [Unreleased]
+
+### Added
+
+### Changed
+
+- The generated wrapper struct now `#[repr(transparent)]`.
 
 ## [v0.6.1] - 2025-09-03
 
@@ -81,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - First release
 - Provides `read_xxx`, `write_xxx` and `modify_xxx` methods
 
-[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.0...HEAD
+[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.0...version-0.6.x
 [v0.6.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.5.0...derive-mmio-v0.6.0
 [v0.5.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.4.0...derive-mmio-v0.5.0
 [v0.4.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.3.0...derive-mmio-v0.4.0

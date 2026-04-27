@@ -144,6 +144,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         #[doc = "An MMIO wrapper for ["]
         #[doc = stringify!(#ident)]
         #[doc = "]"]
+        #[repr(transparent)]
         pub struct #wrapper_ident<'a> {
             ptr: *mut #ident,
             phantom: core::marker::PhantomData<&'a ()>,
