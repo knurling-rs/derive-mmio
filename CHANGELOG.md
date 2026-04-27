@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed the API for getting the length of an inner block of registers (from
   `XXX_array_len` to `len_XXX`)
+- The generated wrapper struct now `#[repr(transparent)]`.
 - Bumped MSRV to 1.85
 
 ## [v0.6.1] - 2025-09-03
