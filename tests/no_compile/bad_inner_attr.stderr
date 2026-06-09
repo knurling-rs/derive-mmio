@@ -1,5 +1,7 @@
-error: `#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options
- --> tests/no_compile/bad_inner_attr.rs:4:5
+error: proc-macro derive panicked
+ --> tests/no_compile/bad_inner_attr.rs:1:10
   |
-4 |     #[mmio(RW)]
-  |     ^
+1 | #[derive(derive_mmio::Mmio)]
+  |          ^^^^^^^^^^^^^^^^^
+  |
+  = help: message: `#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options

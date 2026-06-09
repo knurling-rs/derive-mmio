@@ -1,8 +1,10 @@
-error: `#[mmio(...)]` found second read argument
- --> tests/no_compile/double_read.rs:5:5
+error: proc-macro derive panicked
+ --> tests/no_compile/double_read.rs:1:10
   |
-5 |     #[mmio(Read, PureRead)]
-  |     ^
+1 | #[derive(derive_mmio::Mmio)]
+  |          ^^^^^^^^^^^^^^^^^
+  |
+  = help: message: #[mmio(...)]` found second read argument
 
 error[E0599]: no function or associated item named `new_mmio` found for struct `Uart` in the current scope
   --> tests/no_compile/double_read.rs:13:40

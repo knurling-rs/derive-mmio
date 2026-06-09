@@ -1,14 +1,12 @@
 //! The derive macro for the Mmio crate.
 
 use proc_macro2::TokenStream;
-use proc_macro_error2::{abort, abort_call_site, proc_macro_error};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Field, Fields,
     Ident, Meta, Path, Token, TypeArray, TypePath,
 };
 
-#[proc_macro_error]
 #[proc_macro_derive(Mmio, attributes(mmio))]
 pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // validate our input
@@ -37,7 +35,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         "invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`"
                     ))
                 }) {
-                    abort!(e);
+                    panic!("derive-mmio macro error parsing nested metadata: {e}");
                 };
             }
         }
@@ -56,15 +54,15 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
     if !is_repr_c {
-        abort_call_site!("`#[derive(Mmio)]` only works on repr(C) types");
+        panic!("`#[derive(Mmio)]` only works on repr(C) types");
     }
     let ident = input.ident;
     let wrapper_ident = format_ident!("Mmio{}", ident);
     let Data::Struct(ref s) = input.data else {
-        abort_call_site!("`#[derive(Mmio)]` only supports struct");
+        panic!("`#[derive(Mmio)]` only supports struct");
     };
     let Fields::Named(ref fields) = &s.fields else {
-        abort_call_site!("`#[derive(Mmio)]` only supports structs with named fields");
+        panic!("`#[derive(Mmio)]` only supports structs with named fields");
     };
 
     let config = FieldConfig {
@@ -268,7 +266,7 @@ impl FieldParser {
                 let Ok(nested) =
                     attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
                 else {
-                    abort!(attr.span(), "`Failed to parse #[mmio(...)]`");
+                    panic!("Failed to parse #[mmio(...)] at {:?}", attr.span());
                 };
                 let unexpected_meta_printout =
                     "`#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options";
@@ -282,39 +280,36 @@ impl FieldParser {
                             );
                         } else if path.is_ident("Read") {
                             if access.read.is_some() {
-                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
+                                panic!("#[mmio(...)]` found second read argument");
                             }
                             access.read = Some(ReadAccess::Normal);
                         } else if path.is_ident("PureRead") {
                             if access.read.is_some() {
-                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
+                                panic!("#[mmio(...)]` found second read argument");
                             }
                             access.read = Some(ReadAccess::Pure);
                         } else if path.is_ident("Write") {
                             if access.write {
-                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                                panic!("#[mmio(...)]` found second write argument");
                             }
                             access.write = true;
                         } else if path.is_ident("Modify") {
                             if access.modify {
-                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                                panic!("#[mmio(...)]` found second write argument");
                             }
                             access.modify = true;
                         } else {
-                            abort!(attr.span(), unexpected_meta_printout);
+                            panic!("{unexpected_meta_printout}");
                         }
                     } else {
-                        abort!(attr.span(), unexpected_meta_printout);
+                        panic!("{unexpected_meta_printout}");
                     }
                 }
             }
         }
 
         if access.modify && (access.read.is_none() || !access.write) {
-            abort!(
-                field.span(),
-                "Detected Modify field attribute without read and/or write access specifiers"
-            );
+            panic!("Detected Modify field attribute without read and/or write access specifiers");
         }
         access.convert_unmodified();
 
@@ -364,16 +359,14 @@ impl FieldParser {
                         element_type,
                     )
                 } else {
-                    abort!(
-                        array_type.span(),
+                    panic!(
                         "inner field array {} does not have a valid array type",
                         field.to_token_stream()
                     );
                 }
             }
             _ => {
-                abort!(
-                    field.span(),
+                panic!(
                     "inner field {} does not have a valid path",
                     field.to_token_stream()
                 );

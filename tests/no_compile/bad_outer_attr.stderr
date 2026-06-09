@@ -1,5 +1,7 @@
-error: invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`
- --> tests/no_compile/bad_outer_attr.rs:2:8
+error: proc-macro derive panicked
+ --> tests/no_compile/bad_outer_attr.rs:1:10
   |
-2 | #[mmio(no_ctors_x)]
-  |        ^^^^^^^^^^
+1 | #[derive(derive_mmio::Mmio)]
+  |          ^^^^^^^^^^^^^^^^^
+  |
+  = help: message: derive-mmio macro error parsing nested metadata: invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`

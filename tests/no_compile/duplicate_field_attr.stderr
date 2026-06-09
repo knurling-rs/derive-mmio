@@ -1,8 +1,10 @@
-error: `#[mmio(...)]` found second write argument
- --> tests/no_compile/duplicate_field_attr.rs:6:5
+error: proc-macro derive panicked
+ --> tests/no_compile/duplicate_field_attr.rs:2:10
   |
-6 |     #[mmio(Write, Read, Write)]
-  |     ^
+2 | #[derive(derive_mmio::Mmio)]
+  |          ^^^^^^^^^^^^^^^^^
+  |
+  = help: message: #[mmio(...)]` found second write argument
 
 error[E0599]: no function or associated item named `new_mmio` found for struct `Uart` in the current scope
   --> tests/no_compile/duplicate_field_attr.rs:14:40
