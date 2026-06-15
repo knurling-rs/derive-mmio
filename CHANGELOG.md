@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Swapped from `proc-macro-error2` to `syn::Error`
 - The generated wrapper struct now `#[repr(transparent)]`.
 
 ## [v0.6.1] - 2025-09-03

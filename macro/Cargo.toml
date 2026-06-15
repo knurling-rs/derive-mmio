@@ -14,7 +14,6 @@ version = "0.6.1"
 proc-macro = true
 
 [dependencies]
-proc-macro-error2 = "2.0.1"
 proc-macro2 = "1.0.93"
 quote = "1.0.38"
 syn = "2.0.98"

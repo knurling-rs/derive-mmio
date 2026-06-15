@@ -1,5 +1,5 @@
 error: invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`
- --> tests/no_compile/bad_outer_attr.rs:2:8
+ --> tests/no_compile/bad_outer_attr.rs:2:1
   |
 2 | #[mmio(no_ctors_x)]
-  |        ^^^^^^^^^^
+  | ^
