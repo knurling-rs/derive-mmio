@@ -19,6 +19,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut is_repr_c = false;
     let mut omit_ctor = false;
+    let mut omit_owned = false;
     let mut const_ptr = false;
     let mut const_inner = false;
     'attr: for attr in input.attrs.iter() {
@@ -27,6 +28,10 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 if let Err(e) = list.parse_nested_meta(|meta| {
                     if meta.path.is_ident("no_ctors") {
                         omit_ctor = true;
+                        return Ok(());
+                    }
+                    if meta.path.is_ident("no_owned") {
+                        omit_owned = true;
                         return Ok(());
                     }
                     if meta.path.is_ident("const_ptr") {
@@ -38,7 +43,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                         return Ok(());
                     }
                     Err(meta.error(
-                        "invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`"
+                        "invalid content of mmio attribute, allowed values: `no_ctors`, `no_owned`, `const_ptr`, `const_inner`"
                     ))
                 }) {
                     return Err(syn::Error::new(input.span(), e));
@@ -67,6 +72,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
     }
     let ident = &input.ident;
     let wrapper_ident = format_ident!("Mmio{}", ident);
+    let owned_ident = format_ident!("Owned{}", ident);
     let Data::Struct(ref s) = input.data else {
         return Err(syn::Error::new(
             input.span(),
@@ -151,6 +157,60 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         })
     };
 
+    let owned_handles = if omit_owned {
+        None
+    } else {
+        Some(quote! {
+            #[doc = "A zero-sized Owned wrapper for ["]
+            #[doc = stringify!(#ident)]
+            #[doc = "] at an address known at compile-time (`BASE_ADDR`)"]
+            pub struct #owned_ident<const BASE_ADDR: usize> {
+                _inner: ()
+            }
+
+            impl<const BASE_ADDR: usize> #owned_ident<BASE_ADDR> {
+                /// Create a new object representing ownership of a peripheral at an
+                /// address.
+                ///
+                /// # Safety
+                ///
+                /// The `BASE_ADDR` given must be an address that has suitable
+                /// alignment, and must point to an object which matches the layout
+                /// given by the structure pointed to.
+                ///
+                /// If you create multiple instances of this handle at the same
+                /// time, you are responsible for ensuring that there are no
+                /// read-modify-write races on any of the registers.
+                ///
+                /// The [core::marker::Send] trait is implemented for the Owned
+                /// handle. However, there are cases where this implementation might
+                /// be incorrect, for example if an Owned handle was created for a
+                /// core-local private address.
+                ///
+                /// In that case, it it is recommended to [un-implement
+                /// Send](https://doc.rust-lang.org/nomicon/send-and-sync.html). on
+                /// the register block structure.
+                pub const unsafe fn new() -> Self {
+                    Self {
+                        _inner: ()
+                    }
+                }
+
+                /// Borrow the owned handle so it can be accessed
+                ///
+                /// This turns a zero-sized object with an address known at
+                /// compile-time into an object the size of a pointer, which has all
+                /// the read, write and modify access methods.
+                pub fn borrow_mut<'owner>(&'owner mut self) -> #wrapper_ident<'owner> {
+                    #wrapper_ident {
+                        ptr: BASE_ADDR as *mut _,
+                        phantom: core::marker::PhantomData,
+                    }
+                }
+            }
+        })
+    };
+
     let vis = input.vis;
 
     // combine the fragments into the desired output code
@@ -221,6 +281,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
             #constructors
         }
 
+        #owned_handles
     };
     Ok(tokens)
 }

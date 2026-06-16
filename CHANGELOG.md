@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - API for getting the length of an array of registers (`len_XXX`)
+- Zero-sized Owned Handles, in the form `struct OwnedXXX` (use `no_owned` option to disable)
 
 ### Changed
 
