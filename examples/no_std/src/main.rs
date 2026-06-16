@@ -25,6 +25,28 @@ struct Uart {
     array: [u32; 4],
 }
 
+/// This is our UART driver - it is of zero size
+pub struct Driver {
+    uart: OwnedUart<{ Self::UART_BASE }>,
+}
+
+impl Driver {
+    const UART_BASE: usize = 0xE000_0000;
+
+    pub const fn new() -> Driver {
+        Driver {
+            uart: unsafe { OwnedUart::new() },
+        }
+    }
+
+    pub fn read_control(&mut self) -> u32 {
+        // safely create a handle by borrowing our Owned handle
+        let mut mmio_uart = self.uart.borrow_mut();
+        // used it to access the peripheral
+        mmio_uart.read_control()
+    }
+}
+
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
     loop {}

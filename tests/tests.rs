@@ -6,9 +6,10 @@ fn all_tests() {
 
     t.pass("tests/array_fields.rs");
     t.pass("tests/basic.rs");
-    t.pass("tests/inner_mmio.rs");
     t.pass("tests/inner_mmio_array.rs");
+    t.pass("tests/inner_mmio.rs");
     t.pass("tests/no_ctors.rs");
+    t.pass("tests/owned_handle.rs");
 
     // tests that pass but need an specific rustc version
 
@@ -32,6 +33,7 @@ fn all_tests() {
     t.compile_fail("tests/no_compile/modify_without_read.rs");
     t.compile_fail("tests/no_compile/modify_without_write.rs");
     t.compile_fail("tests/no_compile/no_modify.rs");
+    t.compile_fail("tests/no_compile/no_owned.rs");
     t.compile_fail("tests/no_compile/padding_forbidden.rs");
     t.compile_fail("tests/no_compile/read_only.rs");
     t.compile_fail("tests/no_compile/repr_c_mandatory.rs");
