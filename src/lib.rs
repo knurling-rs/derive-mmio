@@ -327,6 +327,41 @@ impl MmioUart {
 }
 ```
 
+## Owned Handles
+
+As well as `Mmio${StructName}`, you also get a type called `Owned${StructName}<const BASE_ADDR: usize>`.
+This allows you to represent ownership of a peripheral, but it takes up zero-bytes and so is cheaper
+to hold than an `Mmio${StructName}` (which is the size of a pointer). The trade-off is that you must
+call its `borrow_mut` method to actually get an `Mmio${StructName}` in order to actually access the
+peripheral, and that the base address of the peripheral must be known at compile-time.
+
+```rust,ignore
+#[derive(derive_mmio::Mmio)]
+#[repr(C)]
+struct Regs {
+    data: u32,
+    control: u32,
+    status: u32
+}
+
+pub struct UartDriver {
+    uart: OwnedRegs<0xE000_C100>
+}
+
+impl UartDriver {
+    fn read_data(&mut self) -> u32 {
+        let mut mmio_handle = self.uart.borrow_mut();
+        mmio_handle.read_data();
+    }
+}
+```
+
+If we had built `UartDriver` with an `MmioUart` inside, it would have taken up four bytes of RAM.
+By using an `OwnedUart` it takes up zero bytes.
+
+You can disable the generation of the Owned handle by adding a `#[mmio(no_owned)]` attribute
+annotation to your peripheral block structure.
+
 ## Supported attributes
 
 The following attributes are supported for fields with a struct which is wrapped
