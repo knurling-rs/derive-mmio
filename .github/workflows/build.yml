@@ -25,7 +25,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -45,7 +45,7 @@ jobs:
           - thumbv7em-none-eabihf
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -63,7 +63,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -85,9 +85,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test
+        uses: actions/checkout@v7
+      - name: Install rust
+        run: |
+          rustup install 1.85
+          rustup default 1.85
+      - run: cargo test --all-targets
 
   # Build the docs for the library
   docs:
@@ -97,7 +100,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
@@ -111,7 +114,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install stable
@@ -132,7 +135,7 @@ jobs:
       matrix: ${{ fromJSON(needs.setup.outputs.matrix) }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install rust
         run: |
           rustup install ${{ matrix.rust }}
