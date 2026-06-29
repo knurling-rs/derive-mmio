@@ -10,6 +10,9 @@ For more details about the framework check the documentation at
 The minimum supported Rust version is 1.85 (or Ferrocene 25.05). `derive-mmio`
 is tested against the latest stable Rust version and the MSRV.
 
+To test this library, run `cargo +1.85 test` because the tests depend on
+compiler error messages that change from time to time.
+
 ## Support
 
 `derive-mmio` is part of the [Knurling] project, [Ferrous Systems]' effort at
