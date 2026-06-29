@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [v0.6.2] = 2026-06-29
+
+### Added
+
+### Changed
+
+- Swapped from `proc-macro-error2` to `syn::Error`
+- The generated wrapper struct now `#[repr(transparent)]`.
+
 ## [v0.6.1] - 2025-09-03
 
 ### Fixed
@@ -81,7 +90,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - First release
 - Provides `read_xxx`, `write_xxx` and `modify_xxx` methods
 
-[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.0...HEAD
+[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.2...version-0.6.x
+[v0.6.2]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.1...derive-mmio-v0.6.2
+[v0.6.1]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.0...derive-mmio-v0.6.1
 [v0.6.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.5.0...derive-mmio-v0.6.0
 [v0.5.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.4.0...derive-mmio-v0.5.0
 [v0.4.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.3.0...derive-mmio-v0.4.0

@@ -1,18 +1,22 @@
 //! The derive macro for the Mmio crate.
 
 use proc_macro2::TokenStream;
-use proc_macro_error2::{abort, abort_call_site, proc_macro_error};
 use quote::{format_ident, quote, ToTokens, TokenStreamExt};
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Field, Fields,
     Ident, Meta, Path, Token, TypeArray, TypePath,
 };
 
-#[proc_macro_error]
 #[proc_macro_derive(Mmio, attributes(mmio))]
 pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // validate our input
     let input = parse_macro_input!(input as DeriveInput);
+    try_derive_mmio(input)
+        .unwrap_or_else(syn::Error::into_compile_error)
+        .into()
+}
+
+fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> {
     let mut is_repr_c = false;
     let mut omit_ctor = false;
     let mut const_ptr = false;
@@ -37,7 +41,7 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         "invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`"
                     ))
                 }) {
-                    abort!(e);
+                    return Err(syn::Error::new(input.span(), e));
                 };
             }
         }
@@ -56,15 +60,24 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         }
     }
     if !is_repr_c {
-        abort_call_site!("`#[derive(Mmio)]` only works on repr(C) types");
+        return Err(syn::Error::new(
+            input.ident.span(),
+            "`#[derive(Mmio)]` only works on repr(C) types",
+        ));
     }
-    let ident = input.ident;
+    let ident = &input.ident;
     let wrapper_ident = format_ident!("Mmio{}", ident);
     let Data::Struct(ref s) = input.data else {
-        abort_call_site!("`#[derive(Mmio)]` only supports struct");
+        return Err(syn::Error::new(
+            input.span(),
+            "`#[derive(Mmio)]` only supports struct",
+        ));
     };
     let Fields::Named(ref fields) = &s.fields else {
-        abort_call_site!("`#[derive(Mmio)]` only supports structs with named fields");
+        return Err(syn::Error::new(
+            input.span(),
+            "`#[derive(Mmio)]` only supports structs with named fields",
+        ));
     };
 
     let config = FieldConfig {
@@ -80,7 +93,8 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
         .filter(|(_field, field_ident)| !field_ident.to_string().starts_with("_"))
         .map(|(field, field_ident)| {
             field_parser.generate_access_methods(&ident, field, field_ident)
-        });
+        })
+        .collect::<syn::Result<Vec<_>>>()?;
 
     let access_methods_quoted = quote! {
         #(#access_methods)*
@@ -140,10 +154,11 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let vis = input.vis;
 
     // combine the fragments into the desired output code
-    proc_macro::TokenStream::from(quote! {
+    let tokens = quote! {
         #[doc = "An MMIO wrapper for ["]
         #[doc = stringify!(#ident)]
         #[doc = "]"]
+        #[repr(transparent)]
         pub struct #wrapper_ident<'a> {
             ptr: *mut #ident,
             phantom: core::marker::PhantomData<&'a ()>,
@@ -198,7 +213,8 @@ pub fn derive_mmio(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             #constructors
         }
 
-    })
+    };
+    Ok(tokens)
 }
 
 /// Convert a field into code that returns the field size
@@ -260,14 +276,17 @@ impl FieldParser {
         ident: &Ident,
         field: &Field,
         field_ident: &Ident,
-    ) -> TokenStream {
+    ) -> syn::Result<TokenStream> {
         let mut access = AccessModifiers::default();
         for attr in field.attrs.iter() {
             if attr.path().is_ident("mmio") {
                 let Ok(nested) =
                     attr.parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
                 else {
-                    abort!(attr.span(), "`Failed to parse #[mmio(...)]`");
+                    return Err(syn::Error::new(
+                        attr.span(),
+                        "`Failed to parse #[mmio(...)]`",
+                    ));
                 };
                 let unexpected_meta_printout =
                     "`#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options";
@@ -281,39 +300,51 @@ impl FieldParser {
                             );
                         } else if path.is_ident("Read") {
                             if access.read.is_some() {
-                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "`#[mmio(...)]` found second read argument",
+                                ));
                             }
                             access.read = Some(ReadAccess::Normal);
                         } else if path.is_ident("PureRead") {
                             if access.read.is_some() {
-                                abort!(attr.span(), "`#[mmio(...)]` found second read argument");
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "`#[mmio(...)]` found second read argument",
+                                ));
                             }
                             access.read = Some(ReadAccess::Pure);
                         } else if path.is_ident("Write") {
                             if access.write {
-                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "`#[mmio(...)]` found second write argument",
+                                ));
                             }
                             access.write = true;
                         } else if path.is_ident("Modify") {
                             if access.modify {
-                                abort!(attr.span(), "`#[mmio(...)]` found second write argument");
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "`#[mmio(...)]` found second write argument",
+                                ));
                             }
                             access.modify = true;
                         } else {
-                            abort!(attr.span(), unexpected_meta_printout);
+                            return Err(syn::Error::new(attr.span(), unexpected_meta_printout));
                         }
                     } else {
-                        abort!(attr.span(), unexpected_meta_printout);
+                        return Err(syn::Error::new(attr.span(), unexpected_meta_printout));
                     }
                 }
             }
         }
 
         if access.modify && (access.read.is_none() || !access.write) {
-            abort!(
+            return Err(syn::Error::new(
                 field.span(),
-                "Detected Modify field attribute without read and/or write access specifiers"
-            );
+                "Detected Modify field attribute without read and/or write access specifiers",
+            ));
         }
         access.convert_unmodified();
 
@@ -340,7 +371,7 @@ impl FieldParser {
             _ => (),
         }
 
-        output
+        Ok(output)
     }
 
     /// Generate access methods for fields that are MMIO blocks.
@@ -349,33 +380,39 @@ impl FieldParser {
         ident: &Ident,
         field: &Field,
         field_ident: &Ident,
-    ) -> TokenStream {
+    ) -> syn::Result<TokenStream> {
         match &field.ty {
-            syn::Type::Path(type_path) => {
-                self.generate_access_method_for_single_inner_mmio(ident, field_ident, type_path)
-            }
+            syn::Type::Path(type_path) => Ok(self.generate_access_method_for_single_inner_mmio(
+                ident,
+                field_ident,
+                type_path,
+            )),
             syn::Type::Array(array_type) => {
                 if let syn::Type::Path(element_type) = array_type.elem.as_ref() {
-                    self.generate_access_method_for_inner_mmio_array(
+                    Ok(self.generate_access_method_for_inner_mmio_array(
                         ident,
                         field_ident,
                         array_type,
                         element_type,
-                    )
+                    ))
                 } else {
-                    abort!(
+                    return Err(syn::Error::new(
                         array_type.span(),
-                        "inner field array {} does not have a valid array type",
-                        field.to_token_stream()
-                    );
+                        format!(
+                            "inner field array {} does not have a valid array type",
+                            field.to_token_stream()
+                        ),
+                    ));
                 }
             }
             _ => {
-                abort!(
+                return Err(syn::Error::new(
                     field.span(),
-                    "inner field {} does not have a valid path",
-                    field.to_token_stream()
-                );
+                    format!(
+                        "inner field {} does not have a valid path",
+                        field.to_token_stream()
+                    ),
+                ));
             }
         }
     }
