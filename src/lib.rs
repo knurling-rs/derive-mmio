@@ -29,6 +29,8 @@ In Rust, we have some issues:
 3. Accessing a field of a struct without constructing a pointer to it used
    to be quite tricky, although as of Rust 1.51 we have
    [`core::ptr::addr_of_mut`] and as of Rust 1.84 we have `&raw mut`.
+4. You cannot call a method using a pointer (i.e. there is no `(*mut self)`
+   method receiver`).
 
 The usual solution to these problems is to auto-generate code based on some
 machine-readable (but non-Rust) description of the MMIO peripheral. This
