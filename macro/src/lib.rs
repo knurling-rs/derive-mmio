@@ -196,7 +196,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                     }
                 }
 
-                /// Borrow the owned handle so it can be accessed
+                /// Mutably borrow the owned handle so it can be accessed
                 ///
                 /// This turns a zero-sized object with an address known at
                 /// compile-time into an object the size of a pointer, which has all
@@ -206,6 +206,20 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                         ptr: BASE_ADDR as *mut _,
                         phantom: core::marker::PhantomData,
                     }
+                }
+
+                /// Immutably borrow the owned handle so it can be accessed
+                ///
+                /// This turns a zero-sized object with an address known at
+                /// compile-time into an object the size of a pointer, which has all
+                /// the read access methods.
+                pub fn borrow<'owner>(&'owner self) -> derive_mmio::SharedInner<#wrapper_ident<'owner>> {
+                    derive_mmio::SharedInner::__new_internal(
+                        #wrapper_ident {
+                            ptr: BASE_ADDR as *mut _,
+                            phantom: core::marker::PhantomData,
+                        }
+                    )
                 }
             }
         })

@@ -349,9 +349,17 @@ pub struct UartDriver {
 }
 
 impl UartDriver {
-    fn read_data(&mut self) -> u32 {
-        let mut mmio_handle = self.uart.borrow_mut();
-        mmio_handle.read_data();
+    pub fn write_data(&mut self, data: u32) {
+        let mut mmio_uart = self.uart.borrow_mut();
+        mmio_uart.write_data(data);
+    }
+
+    pub fn read_data(&self) -> u32 {
+        let mmio_uart = self.uart.borrow();
+        // This won't work - only have shared access:
+        // mmio_uart.write_data(0);
+        // This does work:
+        mmio_uart.read_data()
     }
 }
 ```

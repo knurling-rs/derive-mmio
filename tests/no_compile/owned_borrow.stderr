@@ -1,0 +1,7 @@
+error[E0596]: cannot borrow data in dereference of `SharedInner<MmioUart<'_>>` as mutable
+  --> tests/no_compile/owned_borrow.rs:16:9
+   |
+16 |         mmio_uart.write_data(data);
+   |         ^^^^^^^^^ cannot borrow as mutable
+   |
+   = help: trait `DerefMut` is required to modify through a dereference, but it is not implemented for `SharedInner<MmioUart<'_>>`

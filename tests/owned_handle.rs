@@ -11,8 +11,14 @@ struct Driver {
 
 impl Driver {
     #[allow(dead_code)]
-    pub fn read_data(&mut self) -> u32 {
-        let mmio_uart = self.uart.borrow_mut();
+    pub fn write_data(&mut self, data: u32) {
+        let mut mmio_uart = self.uart.borrow_mut();
+        mmio_uart.write_data(data);
+    }
+
+    #[allow(dead_code)]
+    pub fn read_data(&self) -> u32 {
+        let mmio_uart = self.uart.borrow();
         mmio_uart.read_data()
     }
 }

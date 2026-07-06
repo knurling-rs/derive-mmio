@@ -35,6 +35,7 @@ fn all_tests() {
     t.compile_fail("tests/no_compile/modify_without_write.rs");
     t.compile_fail("tests/no_compile/no_modify.rs");
     t.compile_fail("tests/no_compile/no_owned.rs");
+    t.compile_fail("tests/no_compile/owned_borrow.rs");
     t.compile_fail("tests/no_compile/padding_forbidden.rs");
     t.compile_fail("tests/no_compile/read_only.rs");
     t.compile_fail("tests/no_compile/repr_c_mandatory.rs");
