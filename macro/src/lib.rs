@@ -222,6 +222,14 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                     )
                 }
             }
+
+            impl<const BASE_ADDR: usize> ::core::fmt::Debug for #owned_ident<BASE_ADDR> {
+                fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                    f.debug_tuple(stringify!(#owned_ident))
+                        .field(&BASE_ADDR)
+                        .finish()
+                }
+            }
         })
     };
 
