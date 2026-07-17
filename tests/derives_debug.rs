@@ -16,12 +16,6 @@ pub fn main() {
 
     // Verify that the debug implementation simply shows the base address const generic.
     let owned_uart: OwnedUart<256> = unsafe { OwnedUart::new() };
-    assert_eq!(
-        format!("{:?}", owned_uart),
-        format!("OwnedUart(256)")
-    );
-    assert_eq!(
-        format!("{:04x?}", owned_uart),
-        format!("OwnedUart(0100)")
-    );
+    assert_eq!(format!("{:?}", owned_uart), format!("OwnedUart(256)"));
+    assert_eq!(format!("{:04x?}", owned_uart), format!("OwnedUart(0100)"));
 }
