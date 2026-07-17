@@ -13,14 +13,15 @@
 pub struct Uart {
     // No access modifiers: PureRead / Write / Modify by default
     data: u32,
-    #[mmio(Read, Write, Modify)]
+    // We can also verify offsets of the register.
+    #[mmio(Read, Write, Modify, offset_bytes(0x4))]
     control: u32,
     // this field is read-only, with no side effects for a read. Generated reader function
     // does not mutably borrow the MMIO block.
     #[mmio(PureRead)]
     status: u32,
     // this field is read-only, but has side effects (e.g. read clears error bits)
-    #[mmio(Read)]
+    #[mmio(Read, offset_bytes(0xC))]
     errors: u32,
     // this is ignored
     _reserved: u32,

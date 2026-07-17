@@ -30,10 +30,11 @@ pub struct Uart {
     control: u32,
     #[mmio(Inner)]
     bank_0: inner::UartBank,
-    #[mmio(Inner)]
+    // You can also do offset checks on inner blocks.
+    #[mmio(Inner, offset_bytes(0x0C))]
     bank_1: inner::UartBank,
     // Arrays also work.
-    #[mmio(Inner)]
+    #[mmio(Inner, offset_bytes(0x14))]
     array: [inner::UartBank; 2],
 }
 

@@ -13,7 +13,7 @@ struct Uart {
     control: u32,
     #[mmio(Inner)]
     bank_0: UartBank,
-    #[mmio(Inner)]
+    #[mmio(Inner, offset_bytes(0x0C))]
     bank_1: UartBank,
 }
 

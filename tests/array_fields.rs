@@ -6,6 +6,7 @@ struct Uart {
     control: u32,
     array_0: [u32; 4],
     other_field: u32,
+    #[mmio(offset_bytes(0x18))]
     array_1: [u32; 2],
     #[mmio(PureRead)]
     array_read_only: [u32; 4],

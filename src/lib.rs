@@ -404,6 +404,9 @@ The access permission attributes work for array fields as well.
   `#[derive(Mmio)]`, which will be verified using trait bounds. The derive macro
   will generate getter functions to retrieve a handle for the inner block, with
   the lifetime of the inner handle tied to the outer handle.
+- `#[mmio(offset_bytes(0xAB))]` generates an offset check, which is useful to compare the offset
+   determined by the compiler against the field offset found in a datasheet. The offset needs to
+   be specified in bytes. This can be useful to protect against forgotten (padding) fields.
 
 If no permission access modifiers were specified, the library will default to
 `PureRead`, `Write`, `Modify` which is the default for most regular R/W
