@@ -4,8 +4,10 @@ pub struct Uart {
     // No access modifiers: PureRead / Write / Modify by default
     control: u32,
     array_0: [u32; 4],
+    // Offset check work for array fields as well.
+    #[mmio(offset_bytes(0x14))]
     array_1: [u32; 2],
-    #[mmio(PureRead)]
+    #[mmio(PureRead, offset_bytes(0x1C))]
     array_read_only: [u32; 4],
     // Write-only e.g. 1WC regs.
     #[mmio(Write)]
