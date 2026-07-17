@@ -11,13 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - MMIO wrapper structures now implement `core::fmt::Debug`. The implementation simply shows
   the base address.
+- Zero-sized Owned Handles, in the form `struct OwnedXXX` (use `no_owned` option to disable)
 
 ## [v0.7.0] - 2026-06-29
 
 ### Added
 
 - API for getting the length of an array of registers (`len_XXX`)
-- Zero-sized Owned Handles, in the form `struct OwnedXXX` (use `no_owned` option to disable)
 
 ### Changed
 
