@@ -29,6 +29,8 @@ In Rust, we have some issues:
 3. Accessing a field of a struct without constructing a pointer to it used
    to be quite tricky, although as of Rust 1.51 we have
    [`core::ptr::addr_of_mut`] and as of Rust 1.84 we have `&raw mut`.
+4. You cannot call a method using a pointer (i.e. there is no `(*mut self)`
+   method receiver).
 
 The usual solution to these problems is to auto-generate code based on some
 machine-readable (but non-Rust) description of the MMIO peripheral. This
@@ -326,6 +328,49 @@ impl MmioUart {
     }
 }
 ```
+
+## Owned Handles
+
+As well as `Mmio${StructName}`, you also get a type called `Owned${StructName}<const BASE_ADDR: usize>`.
+This allows you to represent ownership of a peripheral, but it takes up zero-bytes and so is cheaper
+to hold than an `Mmio${StructName}` (which is the size of a pointer). The trade-off is that you must
+call its `borrow_mut` method to actually get an `Mmio${StructName}` in order to actually access the
+peripheral, and that the base address of the peripheral must be known at compile-time.
+
+```rust,ignore
+#[derive(derive_mmio::Mmio)]
+#[repr(C)]
+struct Regs {
+    data: u32,
+    control: u32,
+    status: u32
+}
+
+pub struct UartDriver {
+    uart: OwnedRegs<0xE000_C100>
+}
+
+impl UartDriver {
+    pub fn write_data(&mut self, data: u32) {
+        let mut mmio_uart = self.uart.borrow_mut();
+        mmio_uart.write_data(data);
+    }
+
+    pub fn read_data(&self) -> u32 {
+        let mmio_uart = self.uart.borrow();
+        // This won't work - only have shared access:
+        // mmio_uart.write_data(0);
+        // This does work:
+        mmio_uart.read_data()
+    }
+}
+```
+
+If we had built `UartDriver` with an `MmioUart` inside, it would have taken up four bytes of RAM.
+By using an `OwnedUart` it takes up zero bytes.
+
+You can disable the generation of the Owned handle by adding a `#[mmio(no_owned)]` attribute
+annotation to your peripheral block structure.
 
 ## Supported attributes
 

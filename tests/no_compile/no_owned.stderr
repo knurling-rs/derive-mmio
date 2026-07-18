@@ -1,0 +1,5 @@
+error[E0412]: cannot find type `OwnedUart` in this scope
+ --> tests/no_compile/no_owned.rs:9:11
+  |
+9 |     uart: OwnedUart<0x1234_5678>,
+  |           ^^^^^^^^^ not found in this scope

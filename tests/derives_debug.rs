@@ -13,4 +13,9 @@ pub fn main() {
     let addr = core::ptr::addr_of!(uart);
     // Verify that the debug implementation simply shows the base address.
     assert_eq!(format!("{:?}", mmio_uart), format!("MmioUart({:?})", addr));
+
+    // Verify that the debug implementation simply shows the base address const generic.
+    let owned_uart: OwnedUart<256> = unsafe { OwnedUart::new() };
+    assert_eq!(format!("{:?}", owned_uart), format!("OwnedUart(256)"));
+    assert_eq!(format!("{:04x?}", owned_uart), format!("OwnedUart(0100)"));
 }

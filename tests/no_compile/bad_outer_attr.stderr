@@ -1,4 +1,4 @@
-error: invalid content of mmio attribute, allowed values: `no_ctors`, `const_ptr`, `const_inner`
+error: invalid content of mmio attribute, allowed values: `no_ctors`, `no_owned`, `const_ptr`, `const_inner`
  --> tests/no_compile/bad_outer_attr.rs:2:1
   |
 2 | #[mmio(no_ctors_x)]
