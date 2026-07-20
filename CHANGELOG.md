@@ -103,7 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - First release
 - Provides `read_xxx`, `write_xxx` and `modify_xxx` methods
 
-[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.7.0...HEAD
+[Unreleased]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.8.0...HEAD
+[v0.8.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.7.0...derive-mmio-v0.8.0
 [v0.7.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.1...derive-mmio-v0.7.0
 [v0.6.1]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.6.0...derive-mmio-v0.6.1
 [v0.6.0]: https://github.com/knurling-rs/derive-mmio/compare/derive-mmio-v0.5.0...derive-mmio-v0.6.0
