@@ -317,7 +317,7 @@ fn field_size(field: &Field) -> TokenStream {
     }
 }
 
-fn parse_offset_literal(expr: Expr) -> syn::Result<usize> {
+fn parse_offset_literal(expr: Expr) -> syn::Result<u64> {
     let Expr::Lit(expr_lit) = expr else {
         return Err(syn::Error::new(
             expr.span(),
@@ -342,9 +342,9 @@ fn parse_offset_literal(expr: Expr) -> syn::Result<usize> {
     let s = s.replace('_', "");
 
     let value = if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
-        usize::from_str_radix(hex, 16)
+        u64::from_str_radix(hex, 16)
     } else {
-        s.parse::<usize>()
+        s.parse::<u64>()
     };
 
     value.map_err(|_| syn::Error::new(lit.span(), "invalid integer for `offset`"))
@@ -466,11 +466,6 @@ impl FieldParser {
                             field_attrs.modify = true;
                         } else {
                             return Err(syn::Error::new(attr.span(), unexpected_meta_printout));
-                        }
-                    } else if let Meta::NameValue(name_value) = meta {
-                        if name_value.path.is_ident("offset_bytes") {
-                            field_attrs.offset_to_check =
-                                Some(parse_offset_literal(name_value.value)? as u64);
                         }
                     } else if let Meta::List(list) = meta {
                         if list.path.is_ident("offset_bytes") {

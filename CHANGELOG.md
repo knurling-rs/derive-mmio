@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `offset` field attribute which allows verifying field offsets.
+- Added `offset_bytes` field attribute which allows verifying field offsets.
 
 ## [v0.8.0] - 2026-07-21
 
