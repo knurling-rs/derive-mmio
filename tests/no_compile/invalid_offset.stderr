@@ -1,15 +1,13 @@
 error[E0080]: evaluation of `_::{constant#0}` failed
- --> tests/no_compile/invalid_offset.rs:1:10
+ --> tests/no_compile/invalid_offset.rs:4:5
   |
-1 | #[derive(derive_mmio::Mmio)]
-  |          ^^^^^^^^^^^^^^^^^ the evaluated program panicked at 'invalid offset for field `data`', $DIR/tests/no_compile/invalid_offset.rs:1:10
+4 |     #[mmio(offset_bytes(0x20))]
+  |     ^ the evaluated program panicked at 'Calculated offset for field `data` does not match given offset_bytes value', $DIR/tests/no_compile/invalid_offset.rs:4:5
   |
   = note: this error originates in the macro `$crate::panic::panic_2021` which comes from the expansion of the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: erroneous constant encountered
- --> tests/no_compile/invalid_offset.rs:1:10
+ --> tests/no_compile/invalid_offset.rs:4:5
   |
-1 | #[derive(derive_mmio::Mmio)]
-  |          ^^^^^^^^^^^^^^^^^
-  |
-  = note: this note originates in the derive macro `derive_mmio::Mmio` (in Nightly builds, run with -Z macro-backtrace for more info)
+4 |     #[mmio(offset_bytes(0x20))]
+  |     ^

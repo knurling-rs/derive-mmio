@@ -1,7 +1,7 @@
 //! The derive macro for the Mmio crate.
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::{
     parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Expr, Field,
     Fields, Ident, Lit, Meta, Path, Token, TypeArray, TypePath,
@@ -480,7 +480,7 @@ impl FieldParser {
         }
 
         if let Some(offset_to_check) = field_attrs.offset_to_check {
-            self.update_offset_checks(ident, field_ident, offset_to_check);
+            self.update_offset_checks(ident, field, field_ident, offset_to_check);
         }
 
         // Need an early return here. Otherwise, some invalid methods for inner MMIO blocks
@@ -525,18 +525,20 @@ impl FieldParser {
     pub fn update_offset_checks(
         &mut self,
         ident: &Ident,
+        field: &Field,
         field_ident: &Ident,
         offset_to_check: u64,
     ) {
         let expected_offset = offset_to_check as usize;
-        self.offset_checks.push(quote! {
+        let span = field.span();
+        self.offset_checks.push(quote_spanned! {span=>
             const _: () = const {
                 assert!(
                     core::mem::offset_of!(#ident, #field_ident) == #expected_offset,
                     concat!(
-                        "invalid offset for field `",
+                        "Calculated offset for field `",
                         stringify!(#field_ident),
-                        "`"
+                        "` does not match given offset_bytes value"
                     )
                 );
             };
