@@ -531,7 +531,7 @@ impl FieldParser {
     ) {
         let expected_offset = offset_to_check as usize;
         let span = field.span();
-        self.offset_checks.push(quote_spanned! { span =>
+        self.offset_checks.push(quote_spanned! { span=>
             const _: () = const {
                 assert!(
                     core::mem::offset_of!(#ident, #field_ident) == #expected_offset,
