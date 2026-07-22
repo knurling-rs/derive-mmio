@@ -31,7 +31,7 @@ fn all_tests() {
     t.compile_fail("tests/no_compile/inner_array_safe_unchecked.rs");
     t.compile_fail("tests/no_compile/inner_mmio_double_borrow.rs");
     t.compile_fail("tests/no_compile/inner_only_shared.rs");
-    t.compile_fail("tests/no_compile/offset_syntax.rs");
+    t.compile_fail("tests/no_compile/invalid_offset.rs");
     t.compile_fail("tests/no_compile/modify_standalone.rs");
     t.compile_fail("tests/no_compile/modify_without_read.rs");
     t.compile_fail("tests/no_compile/modify_without_write.rs");
