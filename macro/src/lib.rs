@@ -1,10 +1,10 @@
 //! The derive macro for the Mmio crate.
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote, ToTokens, TokenStreamExt};
+use quote::{format_ident, quote, quote_spanned, ToTokens, TokenStreamExt};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Field, Fields,
-    Ident, Meta, Path, Token, TypeArray, TypePath,
+    parse_macro_input, punctuated::Punctuated, spanned::Spanned, Data, DeriveInput, Expr, Field,
+    Fields, Ident, Lit, Meta, Path, Token, TypeArray, TypePath,
 };
 
 #[proc_macro_derive(Mmio, attributes(mmio))]
@@ -97,9 +97,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         .iter()
         .map(|field| (field, field.ident.as_ref().unwrap()))
         .filter(|(_field, field_ident)| !field_ident.to_string().starts_with("_"))
-        .map(|(field, field_ident)| {
-            field_parser.generate_access_methods(&ident, field, field_ident)
-        })
+        .map(|(field, field_ident)| field_parser.generate_field_methods(&ident, field, field_ident))
         .collect::<syn::Result<Vec<_>>>()?;
 
     let access_methods_quoted = quote! {
@@ -107,6 +105,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
     };
     let field_sizes = fields.named.iter().map(field_size);
     let bound_checks = &field_parser.bound_checks;
+    let offset_checks = &field_parser.offset_checks;
     let mut bound_check_func = TokenStream::new();
     if !bound_checks.is_empty() {
         bound_check_func.append_all(quote! {
@@ -255,12 +254,12 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         }
 
         impl #wrapper_ident<'_> {
-            const _FIELD_SIZE: usize = {
+            const _REG_BLOCK_SIZE: usize = {
                 0 #( + #field_sizes )*
             };
 
             // Must match expected size
-            const _SIZE_CHECK: [(); #wrapper_ident::_FIELD_SIZE] = [(); core::mem::size_of::<#ident>()];
+            const _SIZE_CHECK: [(); #wrapper_ident::_REG_BLOCK_SIZE] = [(); core::mem::size_of::<#ident>()];
 
             /// Unsafely clone the MMIO handle.
             ///
@@ -286,6 +285,8 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         }
 
         unsafe impl derive_mmio::_MmioMarker for #wrapper_ident<'_> {}
+
+        #(#offset_checks)*
 
         /// The [core::marker::Send] trait is unsafely implemented because sending a register block pointer to another
         /// thread should not be an issue for most use-cases.
@@ -316,6 +317,39 @@ fn field_size(field: &Field) -> TokenStream {
     }
 }
 
+fn parse_offset_literal(expr: Expr) -> syn::Result<u64> {
+    let Expr::Lit(expr_lit) = expr else {
+        return Err(syn::Error::new(
+            expr.span(),
+            "offset must be an integer literal",
+        ));
+    };
+    let Lit::Int(lit) = expr_lit.lit else {
+        return Err(syn::Error::new(
+            expr_lit.lit.span(),
+            "offset must be an integer literal",
+        ));
+    };
+
+    let mut s = lit.to_string();
+    let suffix = lit.suffix();
+    if !suffix.is_empty() {
+        s = s
+            .strip_suffix(suffix)
+            .expect("Failed to strip suffix from integer literal")
+            .to_string()
+    }
+    let s = s.replace('_', "");
+
+    let value = if let Some(hex) = s.strip_prefix("0x").or_else(|| s.strip_prefix("0X")) {
+        u64::from_str_radix(hex, 16)
+    } else {
+        s.parse::<u64>()
+    };
+
+    value.map_err(|_| syn::Error::new(lit.span(), "invalid integer for `offset`"))
+}
+
 #[derive(Debug, Default, PartialEq, Eq)]
 enum ReadAccess {
     // Pure reads, no side effects.
@@ -326,13 +360,14 @@ enum ReadAccess {
 }
 
 #[derive(Debug, Default)]
-struct AccessModifiers {
+struct FieldAttributes {
+    offset_to_check: Option<u64>,
     read: Option<ReadAccess>,
     write: bool,
     modify: bool,
 }
 
-impl AccessModifiers {
+impl FieldAttributes {
     pub fn convert_unmodified(&mut self) -> bool {
         if self.read.is_none() && !self.write && !self.modify {
             self.read = Some(ReadAccess::Pure);
@@ -351,6 +386,7 @@ struct FieldConfig {
 
 struct FieldParser {
     bound_checks: Vec<TokenStream>,
+    offset_checks: Vec<TokenStream>,
     config: FieldConfig,
 }
 
@@ -358,17 +394,23 @@ impl FieldParser {
     pub fn new(config: FieldConfig) -> Self {
         Self {
             bound_checks: Vec::new(),
+            offset_checks: Vec::new(),
             config,
         }
     }
     /// Convert a field into a set of methods that operate on that field
-    fn generate_access_methods(
+    ///
+    /// Also returns the size of the field, which can be larger than the register size for
+    /// inner MMIO blocks.
+    fn generate_field_methods(
         &mut self,
         ident: &Ident,
         field: &Field,
         field_ident: &Ident,
     ) -> syn::Result<TokenStream> {
-        let mut access = AccessModifiers::default();
+        let mut field_attrs = FieldAttributes::default();
+        let mut output = TokenStream::new();
+        let mut inner_mmio_detected = false;
         for attr in field.attrs.iter() {
             if attr.path().is_ident("mmio") {
                 let Ok(nested) =
@@ -384,45 +426,51 @@ impl FieldParser {
                 for meta in nested {
                     if let Meta::Path(path) = meta {
                         if path.is_ident("Inner") {
-                            return self.generate_access_method_for_inner_mmio_field(
+                            inner_mmio_detected = true;
+                            output.append_all(self.generate_access_method_for_inner_mmio_field(
                                 ident,
                                 field,
                                 field_ident,
-                            );
+                            ));
                         } else if path.is_ident("Read") {
-                            if access.read.is_some() {
+                            if field_attrs.read.is_some() {
                                 return Err(syn::Error::new(
                                     attr.span(),
                                     "`#[mmio(...)]` found second read argument",
                                 ));
                             }
-                            access.read = Some(ReadAccess::Normal);
+                            field_attrs.read = Some(ReadAccess::Normal);
                         } else if path.is_ident("PureRead") {
-                            if access.read.is_some() {
+                            if field_attrs.read.is_some() {
                                 return Err(syn::Error::new(
                                     attr.span(),
                                     "`#[mmio(...)]` found second read argument",
                                 ));
                             }
-                            access.read = Some(ReadAccess::Pure);
+                            field_attrs.read = Some(ReadAccess::Pure);
                         } else if path.is_ident("Write") {
-                            if access.write {
+                            if field_attrs.write {
                                 return Err(syn::Error::new(
                                     attr.span(),
                                     "`#[mmio(...)]` found second write argument",
                                 ));
                             }
-                            access.write = true;
+                            field_attrs.write = true;
                         } else if path.is_ident("Modify") {
-                            if access.modify {
+                            if field_attrs.modify {
                                 return Err(syn::Error::new(
                                     attr.span(),
                                     "`#[mmio(...)]` found second write argument",
                                 ));
                             }
-                            access.modify = true;
+                            field_attrs.modify = true;
                         } else {
                             return Err(syn::Error::new(attr.span(), unexpected_meta_printout));
+                        }
+                    } else if let Meta::List(list) = meta {
+                        if list.path.is_ident("offset_bytes") {
+                            field_attrs.offset_to_check =
+                                Some(parse_offset_literal(syn::parse2(list.tokens)?)? as u64);
                         }
                     } else {
                         return Err(syn::Error::new(attr.span(), unexpected_meta_printout));
@@ -431,20 +479,29 @@ impl FieldParser {
             }
         }
 
-        if access.modify && (access.read.is_none() || !access.write) {
+        if let Some(offset_to_check) = field_attrs.offset_to_check {
+            self.update_offset_checks(ident, field, field_ident, offset_to_check);
+        }
+
+        // Need an early return here. Otherwise, some invalid methods for inner MMIO blocks
+        // might be generated.
+        if inner_mmio_detected {
+            return Ok(output);
+        }
+
+        if field_attrs.modify && (field_attrs.read.is_none() || !field_attrs.write) {
             return Err(syn::Error::new(
                 field.span(),
                 "Detected Modify field attribute without read and/or write access specifiers",
             ));
         }
-        access.convert_unmodified();
+        field_attrs.convert_unmodified();
 
-        let mut output = TokenStream::new();
         match &field.ty {
             syn::Type::Array(type_array) => {
                 self.generate_array_access_methods(
                     ident,
-                    access,
+                    field_attrs,
                     field_ident,
                     type_array,
                     &mut output,
@@ -453,7 +510,7 @@ impl FieldParser {
             syn::Type::Path(type_path) => {
                 self.generate_field_access_methods(
                     ident,
-                    access,
+                    field_attrs,
                     field_ident,
                     type_path,
                     &mut output,
@@ -463,6 +520,29 @@ impl FieldParser {
         }
 
         Ok(output)
+    }
+
+    pub fn update_offset_checks(
+        &mut self,
+        ident: &Ident,
+        field: &Field,
+        field_ident: &Ident,
+        offset_to_check: u64,
+    ) {
+        let expected_offset = offset_to_check as usize;
+        let span = field.span();
+        self.offset_checks.push(quote_spanned! { span=>
+            const _: () = const {
+                assert!(
+                    core::mem::offset_of!(#ident, #field_ident) == #expected_offset,
+                    concat!(
+                        "Calculated offset for field `",
+                        stringify!(#field_ident),
+                        "` does not match given offset_bytes value"
+                    )
+                );
+            };
+        });
     }
 
     /// Generate access methods for fields that are MMIO blocks.
@@ -870,9 +950,9 @@ impl FieldParser {
     }
 
     fn generate_field_access_methods(
-        &self,
+        &mut self,
         ident: &Ident,
-        access: AccessModifiers,
+        field_attributes: FieldAttributes,
         field_ident: &Ident,
         type_path: &TypePath,
         access_methods: &mut TokenStream,
@@ -901,7 +981,7 @@ impl FieldParser {
                 unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) }
             }
         });
-        if let Some(read_access) = access.read {
+        if let Some(read_access) = field_attributes.read {
             let opt_mut = (read_access == ReadAccess::Normal).then_some(quote! { mut });
 
             access_methods.append_all(quote! {
@@ -917,7 +997,7 @@ impl FieldParser {
                 }
             });
         }
-        if access.write {
+        if field_attributes.write {
             access_methods.append_all(quote! {
                 #[doc = "Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
@@ -931,7 +1011,7 @@ impl FieldParser {
                 }
             });
         }
-        if access.modify {
+        if field_attributes.modify {
             access_methods.append_all(quote! {
             #[doc = "Read-Modify-Write the "]
             #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
@@ -949,7 +1029,7 @@ impl FieldParser {
     fn generate_array_access_methods(
         &self,
         ident: &Ident,
-        access: AccessModifiers,
+        access: FieldAttributes,
         field_ident: &Ident,
         type_array: &TypeArray,
         access_methods: &mut TokenStream,

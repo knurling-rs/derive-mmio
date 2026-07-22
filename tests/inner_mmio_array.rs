@@ -28,7 +28,8 @@ mod inner {
 #[repr(C)]
 pub struct Uart {
     control: u32,
-    #[mmio(Inner)]
+    // Offset checks work here as well.
+    #[mmio(Inner, offset_bytes(0x4))]
     banks: [inner::UartBank; 2],
 }
 
