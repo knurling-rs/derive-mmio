@@ -998,7 +998,7 @@ impl FieldParser {
                 #[doc = " register."]
                 #[inline(always)]
                 pub fn #read_fn_name(&#opt_mut self) -> #type_path {
-                    let addr = unsafe { core::ptr::addr_of!((*self.ptr).#field_ident) };
+                    let addr = self.#pointer_fn_name();
                     unsafe {
                         addr.read_volatile()
                     }
@@ -1027,7 +1027,7 @@ impl FieldParser {
             #[doc = " register."]
             #[inline]
             pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#type_path) -> #type_path {
-                let value = self. #read_fn_name();
+                let value = self.#read_fn_name();
                 let new_value = f(value);
                 self. #write_fn_name(new_value);
             }
@@ -1103,10 +1103,9 @@ impl FieldParser {
                 #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
                 #[inline(always)]
                 pub unsafe fn #unchecked_read_fn_name(&#opt_mut self, index: usize) -> #array_type {
-                    let ptr = unsafe { (*self.ptr).#field_ident.as_mut_ptr() };
-                    // Safety: We're performing a volatile read from a valid memory location
+                   // Safety: We're performing a volatile read from a valid memory location
                     unsafe {
-                        core::ptr::read_volatile(ptr.add(index))
+                        core::ptr::read_volatile(self.#pointer_fn_name().add(index))
                     }
                 }
 
