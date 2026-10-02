@@ -19,5 +19,6 @@ rustversion = "1"
 [features]
 
 [dev-dependencies]
-trybuild = "1"
+# Last version to support Rust 1.76 - next version needs Rust 1.85
+trybuild = "=1.0.116"
 negative-impl = "0.1"
