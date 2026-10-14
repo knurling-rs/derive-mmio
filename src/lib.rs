@@ -391,15 +391,21 @@ with `#[derive(Mmio)]`:
 
 The access permission attributes work for array fields as well.
 
-- `#[mmio(PureRead)]`: The field is read-only. The read does not have side
-  effects, and the generated reader function only requires a shared reference
-  to the MMIO handle.
-- `#[mmio(Read)]`: The field can be read, but the read has side effects. The
-  generated reader function requires a mutable reference to the MMIO handle.
-- `#[mmio(Write)]`: The field can be written to. This will generate a writer
-  function for the field.
+- `#[mmio(PureRead)]`: The field can be read without side effects. The
+  generated reader function only requires a shared reference to the MMIO
+  handle.
+- `#[mmio(Write)]`: The field can be written to, with potential side effects.
+  The generated writer function requires a mutable reference to the MMIO
+  handle.
 - `#[mmio(Modify)]`: The field can be modified. This will generate a modify
-  function for the field which performs a Read-Modify-Write operation.
+  function for the field which performs a Read-Modify-Write operation. This
+  function requires a mutable reference to the MMIO handle.
+- `#[mmio(Read)]`: The field can be read, but the read has potential side
+  effects. The generated reader function requires a mutable reference to the
+  MMIO handle.
+- `#[mmio(SharedWrite)]`: The field can be written to in a way that there is
+  no issue with concurrency. The generated writer function only requires a
+  shared reference to the MMIO handle.
 - `#[mmio(Inner)]`: The field is a register block. It must be a type which is
   `#[derive(Mmio)]`, which will be verified using trait bounds. The derive macro
   will generate getter functions to retrieve a handle for the inner block, with
@@ -410,7 +416,17 @@ The access permission attributes work for array fields as well.
 
 If no permission access modifiers were specified, the library will default to
 `PureRead`, `Write`, `Modify` which is the default for most regular R/W
-registers.
+registers. You should consider carefully whether you want to generate `&self`
+methods (`PureRead` and `SharedWrite`) or methods that require exlusive access
+(`Read`, `Write` and `Modify`), based on what would happen to two separate
+parts of the application used the peripheral concurrently. Reading a
+free-running 32-bit timer is almost certainly fine with a `PureRead`
+operation, and clearing Interrupt Mask bits using a dedicated
+write-one-to-clear register is likely fine using a `SharedWrite` method.
+
+If a field is marked as `Write` but you want to write using a shared reference
+anyway, you can always call `pointer_to_$field` and unsafely perform a
+volatile write using the pointer.
 
 ## Supported field types
 

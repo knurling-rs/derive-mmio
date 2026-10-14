@@ -351,27 +351,27 @@ fn parse_offset_literal(expr: Expr) -> syn::Result<u64> {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-enum ReadAccess {
-    // Pure reads, no side effects.
-    Pure,
-    // Normal read access with side effects.
+enum FieldAccess {
+    // Pure reads or shared writes (`&self`)
+    Shared,
+    // Normal read/write access (`&mut self`)
     #[default]
-    Normal,
+    Exclusive,
 }
 
 #[derive(Debug, Default)]
 struct FieldAttributes {
     offset_to_check: Option<u64>,
-    read: Option<ReadAccess>,
-    write: bool,
+    read: Option<FieldAccess>,
+    write: Option<FieldAccess>,
     modify: bool,
 }
 
 impl FieldAttributes {
     pub fn convert_unmodified(&mut self) -> bool {
-        if self.read.is_none() && !self.write && !self.modify {
-            self.read = Some(ReadAccess::Pure);
-            self.write = true;
+        if self.read.is_none() && self.write.is_none() && !self.modify {
+            self.read = Some(FieldAccess::Shared);
+            self.write = Some(FieldAccess::Exclusive);
             self.modify = true;
             return true;
         }
@@ -422,7 +422,7 @@ impl FieldParser {
                     ));
                 };
                 let unexpected_meta_printout =
-                    "`#[mmio(...)]` only supports 'Inner', 'Read', 'PureRead', 'Write', and 'Modify' options";
+                    "`#[mmio(...)]` only supports 'Inner', 'Modify', 'PureRead', 'Read', 'SharedWrite', and 'Write' options";
                 for meta in nested {
                     if let Meta::Path(path) = meta {
                         if path.is_ident("Inner") {
@@ -439,7 +439,7 @@ impl FieldParser {
                                     "`#[mmio(...)]` found second read argument",
                                 ));
                             }
-                            field_attrs.read = Some(ReadAccess::Normal);
+                            field_attrs.read = Some(FieldAccess::Exclusive);
                         } else if path.is_ident("PureRead") {
                             if field_attrs.read.is_some() {
                                 return Err(syn::Error::new(
@@ -447,15 +447,23 @@ impl FieldParser {
                                     "`#[mmio(...)]` found second read argument",
                                 ));
                             }
-                            field_attrs.read = Some(ReadAccess::Pure);
+                            field_attrs.read = Some(FieldAccess::Shared);
                         } else if path.is_ident("Write") {
-                            if field_attrs.write {
+                            if field_attrs.write.is_some() {
                                 return Err(syn::Error::new(
                                     attr.span(),
                                     "`#[mmio(...)]` found second write argument",
                                 ));
                             }
-                            field_attrs.write = true;
+                            field_attrs.write = Some(FieldAccess::Exclusive);
+                        } else if path.is_ident("SharedWrite") {
+                            if field_attrs.write.is_some() {
+                                return Err(syn::Error::new(
+                                    attr.span(),
+                                    "`#[mmio(...)]` found second write argument",
+                                ));
+                            }
+                            field_attrs.write = Some(FieldAccess::Shared);
                         } else if path.is_ident("Modify") {
                             if field_attrs.modify {
                                 return Err(syn::Error::new(
@@ -489,7 +497,7 @@ impl FieldParser {
             return Ok(output);
         }
 
-        if field_attrs.modify && (field_attrs.read.is_none() || !field_attrs.write) {
+        if field_attrs.modify && (field_attrs.read.is_none() || field_attrs.write.is_none()) {
             return Err(syn::Error::new(
                 field.span(),
                 "Detected Modify field attribute without read and/or write access specifiers",
@@ -982,7 +990,7 @@ impl FieldParser {
             }
         });
         if let Some(read_access) = field_attributes.read {
-            let opt_mut = (read_access == ReadAccess::Normal).then_some(quote! { mut });
+            let opt_mut = (read_access == FieldAccess::Exclusive).then_some(quote! { mut });
 
             access_methods.append_all(quote! {
                 #[doc = "Read the "]
@@ -990,20 +998,21 @@ impl FieldParser {
                 #[doc = " register."]
                 #[inline(always)]
                 pub fn #read_fn_name(&#opt_mut self) -> #type_path {
-                    let addr = unsafe { core::ptr::addr_of!((*self.ptr).#field_ident) };
+                    let addr = self.#pointer_fn_name();
                     unsafe {
                         addr.read_volatile()
                     }
                 }
             });
         }
-        if field_attributes.write {
+        if let Some(write_access) = field_attributes.write {
+            let opt_mut = (write_access == FieldAccess::Exclusive).then_some(quote! { mut });
             access_methods.append_all(quote! {
                 #[doc = "Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
                 #[doc = " register."]
                 #[inline(always)]
-                pub fn #write_fn_name(&mut self, value: #type_path) {
+                pub fn #write_fn_name(&#opt_mut self, value: #type_path) {
                     let addr = self.#pointer_fn_name();
                     unsafe {
                         addr.write_volatile(value)
@@ -1018,7 +1027,7 @@ impl FieldParser {
             #[doc = " register."]
             #[inline]
             pub fn #modify_fn_name<F>(&mut self, f: F) where F: FnOnce(#type_path) -> #type_path {
-                let value = self. #read_fn_name();
+                let value = self.#read_fn_name();
                 let new_value = f(value);
                 self. #write_fn_name(new_value);
             }
@@ -1079,7 +1088,7 @@ impl FieldParser {
 
         if let Some(read_access) = access.read {
             let mut opt_mut = TokenStream::new();
-            if read_access == ReadAccess::Normal {
+            if read_access == FieldAccess::Exclusive {
                 opt_mut.append_all(quote! { mut });
             }
             access_methods.append_all(quote! {
@@ -1094,10 +1103,9 @@ impl FieldParser {
                 #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
                 #[inline(always)]
                 pub unsafe fn #unchecked_read_fn_name(&#opt_mut self, index: usize) -> #array_type {
-                    let ptr = unsafe { (*self.ptr).#field_ident.as_mut_ptr() };
-                    // Safety: We're performing a volatile read from a valid memory location
+                   // Safety: We're performing a volatile read from a valid memory location
                     unsafe {
-                        core::ptr::read_volatile(ptr.add(index))
+                        core::ptr::read_volatile(self.#pointer_fn_name().add(index))
                     }
                 }
 
@@ -1121,7 +1129,11 @@ impl FieldParser {
             });
         }
 
-        if access.write {
+        if let Some(write_access) = access.write {
+            let mut opt_mut = TokenStream::new();
+            if write_access == FieldAccess::Exclusive {
+                opt_mut.append_all(quote! { mut });
+            }
             access_methods.append_all(quote! {
                 #[doc = "Write the "]
                 #[doc = concat!("[", stringify!(#ident), "::", stringify!(#field_ident), "]")]
@@ -1132,7 +1144,7 @@ impl FieldParser {
                 #[doc = "write on a raw pointer with the given offset which might lead to "]
                 #[doc = "undefined behaviour. Users MUST ensure that the offset is valid."]
                 #[inline(always)]
-                pub unsafe fn #unchecked_write_fn_name(&mut self, index: usize, value: #array_type) {
+                pub unsafe fn #unchecked_write_fn_name(&#opt_mut self, index: usize, value: #array_type) {
                     // Safety: We're performing a volatile read from a valid memory location
                     unsafe {
                         core::ptr::write_volatile(self.#pointer_fn_name().add(index), value)

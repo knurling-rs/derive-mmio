@@ -23,6 +23,9 @@ pub struct Uart {
     // this field is read-only, but has side effects (e.g. read clears error bits)
     #[mmio(Read, offset_bytes(0xC))]
     errors: u32,
+    // this field is write-only but a shared reference is OK
+    #[mmio(SharedWrite)]
+    interrupt_clear: u32,
     // this is ignored
     _reserved: u32,
     // this will introduce padding, which will fail the compilation
@@ -35,6 +38,7 @@ fn main() {
         control: 0xC,
         status: 0xF,
         errors: 0x2,
+        interrupt_clear: 0,
         _reserved: 0,
         //_reserved2: 0,
     };
@@ -58,9 +62,10 @@ fn main() {
     println!("status = {}", mmio_uart.read_status());
     println!("status register is @ {:p}", mmio_uart.pointer_to_status());
 
-    // Non mutable block, can still be used to perform pure reads.
+    // Non mutable block, can still be used to perform pure reads and shared writes
     let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
     println!("status = {}", mmio_uart.read_status());
+    mmio_uart.write_interrupt_clear(1);
 }
 
 #[test]
