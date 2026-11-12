@@ -8,7 +8,7 @@ fn main() {
     let mut uart = Uart { array: [0; 2] };
 
     // Safety: We're pointing at a real object
-    let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
 
     // we cannot safely access the array field without bounds checks
 

@@ -40,7 +40,7 @@ fn main() {
     };
 
     // Safety: We're pointing at a real object
-    let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     assert_eq!(mmio_uart.len_banks(), 2);
     let bank0 = mmio_uart.banks_shared(0).unwrap();
     assert_eq!(bank0.read_data(), 0x2);

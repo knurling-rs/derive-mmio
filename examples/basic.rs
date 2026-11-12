@@ -44,7 +44,7 @@ fn main() {
     };
 
     // Safety: We're pointing at a real object
-    let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     println!("sample UART is @ {:p}", core::ptr::addr_of_mut!(uart));
 
     println!("data = {}", mmio_uart.read_data());
@@ -63,7 +63,7 @@ fn main() {
     println!("status register is @ {:p}", mmio_uart.pointer_to_status());
 
     // Non mutable block, can still be used to perform pure reads and shared writes
-    let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     println!("status = {}", mmio_uart.read_status());
     mmio_uart.write_interrupt_clear(1);
 }

@@ -27,7 +27,7 @@ fn main() {
     };
 
     // Safety: We're pointing at a real object
-    let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     assert_eq!(mmio_uart.read_array_0(0).unwrap(), 0x1);
     assert_eq!(mmio_uart.read_array_0(1).unwrap(), 0x2);
     assert_eq!(mmio_uart.read_array_0(2).unwrap(), 0x3);
@@ -98,7 +98,7 @@ fn main() {
     mmio_uart.write_array_write_only(0, 0xFF).unwrap();
     mmio_uart.write_array_write_only(1, 0xFF).unwrap();
 
-    let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     // We can only use this to read the pure read-only array.
     assert_eq!(mmio_uart.read_array_read_only(0).unwrap(), 0x4);
     assert_eq!(mmio_uart.read_array_read_only(1).unwrap(), 0x3);

@@ -29,7 +29,7 @@ fn main() {
     };
 
     // Safety: We're pointing at a real object
-    let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
 
     let ptr_raw = core::ptr::addr_of_mut!(uart);
     assert_eq!(mmio_uart.read_data(), 0xA);

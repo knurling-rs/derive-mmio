@@ -16,6 +16,6 @@ fn main() {
     };
 
     // Safety: We're pointing at a real object
-    let mmio_uart = unsafe { CpuPrivateRegBlock::new_mmio(core::ptr::addr_of_mut!(private_peripheral)) };
+    let mmio_uart = unsafe { MmioCpuPrivateRegBlock::new(core::ptr::addr_of_mut!(private_peripheral)) };
     send_check(&mmio_uart);
 }
