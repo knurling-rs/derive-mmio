@@ -1,0 +1,42 @@
+
+app:	file format elf32-littlearm
+
+Disassembly of section .text:
+
+000200e4 <_start>:
+   200e4:      	push	{r7, lr}
+   200e6:      	mov	r7, sp
+   200e8:      	sub	sp, #0x10
+   200ea:      	movw	r0, #0x11f
+   200ee:      	movs	r5, #0x0
+   200f0:      	movt	r0, #0x2
+   200f4:      	str	r0, [sp, #0x4]
+   200f6:      	movw	r0, #0x12d
+   200fa:      	movt	r0, #0x2
+   200fe:      	str	r0, [sp]
+   20100:      	mov	r0, sp
+   20102:      	add.w	r4, r0, #0x8
+   20106:      	ldrd	r1, r2, [sp]
+   2010a:      	strd	r1, r2, [sp, #8]
+   2010e:      	ldr.w	r1, [r4, r5, lsl #2]
+   20112:      	movs	r0, #0x0
+   20114:      	blx	r1
+   20116:      	adds	r5, #0x1
+   20118:      	cmp	r5, #0x2
+   2011a:      	bne	0x2010e <_start+0x2a>   @ imm = #-0x10
+   2011c:      	b	0x2011c <_start+0x38>   @ imm = #-0x4
+
+0002011e <write_bank_data>:
+   2011e:      	push	{r7, lr}
+   20120:      	mov	r7, sp
+   20122:      	movs	r1, #0x4
+   20124:      	movt	r1, #0x4000
+   20128:      	str	r0, [r1]
+   2012a:      	pop	{r7, pc}
+
+0002012c <write_control>:
+   2012c:      	push	{r7, lr}
+   2012e:      	mov	r7, sp
+   20130:      	mov.w	r1, #0x40000000
+   20134:      	str	r0, [r1]
+   20136:      	pop	{r7, pc}

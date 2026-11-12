@@ -1,0 +1,62 @@
+
+app:	file format elf32-littlearm
+
+Disassembly of section .text:
+
+000200e4 <_start>:
+   200e4:      	push	{r7, lr}
+   200e6:      	mov	r7, sp
+   200e8:      	sub	sp, #0x10
+   200ea:      	movw	r0, #0x11f
+   200ee:      	movs	r5, #0x0
+   200f0:      	movt	r0, #0x2
+   200f4:      	str	r0, [sp, #0x4]
+   200f6:      	movw	r0, #0x13d
+   200fa:      	movt	r0, #0x2
+   200fe:      	str	r0, [sp]
+   20100:      	mov	r0, sp
+   20102:      	add.w	r4, r0, #0x8
+   20106:      	ldrd	r1, r2, [sp]
+   2010a:      	strd	r1, r2, [sp, #8]
+   2010e:      	ldr.w	r1, [r4, r5, lsl #2]
+   20112:      	movs	r0, #0x0
+   20114:      	blx	r1
+   20116:      	adds	r5, #0x1
+   20118:      	cmp	r5, #0x2
+   2011a:      	bne	0x2010e <_start+0x2a>   @ imm = #-0x10
+   2011c:      	b	0x2011c <_start+0x38>   @ imm = #-0x4
+
+0002011e <write_bank_data>:
+   2011e:      	push	{r4, r6, r7, lr}
+   20120:      	add	r7, sp, #0x8
+   20122:      	sub	sp, #0x8
+   20124:      	mov	r4, r0
+   20126:      	mov.w	r0, #0x40000000
+   2012a:      	bl	0x2014e <<regs::Uart>::new_mmio_at> @ imm = #0x20
+   2012e:      	str	r0, [sp, #0x4]
+   20130:      	add	r0, sp, #0x4
+   20132:      	bl	0x20154 <<regs::MmioUart>::__steal_bank_unchecked> @ imm = #0x1e
+   20136:      	str	r4, [r0]
+   20138:      	add	sp, #0x8
+   2013a:      	pop	{r4, r6, r7, pc}
+
+0002013c <write_control>:
+   2013c:      	push	{r4, r6, r7, lr}
+   2013e:      	add	r7, sp, #0x8
+   20140:      	mov	r4, r0
+   20142:      	mov.w	r0, #0x40000000
+   20146:      	bl	0x2014e <<regs::Uart>::new_mmio_at> @ imm = #0x4
+   2014a:      	str	r4, [r0]
+   2014c:      	pop	{r4, r6, r7, pc}
+
+0002014e <<regs::Uart>::new_mmio_at>:
+   2014e:      	push	{r7, lr}
+   20150:      	mov	r7, sp
+   20152:      	pop	{r7, pc}
+
+00020154 <<regs::MmioUart>::__steal_bank_unchecked>:
+   20154:      	push	{r7, lr}
+   20156:      	mov	r7, sp
+   20158:      	ldr	r0, [r0]
+   2015a:      	adds	r0, #0x4
+   2015c:      	pop	{r7, pc}
