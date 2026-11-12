@@ -125,6 +125,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
             /// # Safety
             ///
             /// See the safety notes for [Self::new_mmio].
+            #[inline]
             pub const unsafe fn new_mmio_at(addr: usize) -> #wrapper_ident<'static> {
                 Self::new_mmio(addr as *mut #ident)
             }
@@ -189,6 +190,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 /// In that case, it it is recommended to [un-implement
                 /// Send](https://doc.rust-lang.org/nomicon/send-and-sync.html). on
                 /// the register block structure.
+                #[inline]
                 pub const unsafe fn new() -> Self {
                     Self {
                         _inner: ()
@@ -200,6 +202,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 /// This turns a zero-sized object with an address known at
                 /// compile-time into an object the size of a pointer, which has all
                 /// the read, write and modify access methods.
+                #[inline]
                 pub fn borrow_mut<'owner>(&'owner mut self) -> #wrapper_ident<'owner> {
                     #wrapper_ident {
                         ptr: BASE_ADDR as *mut _,
@@ -212,6 +215,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 /// This turns a zero-sized object with an address known at
                 /// compile-time into an object the size of a pointer, which has all
                 /// the read access methods.
+                #[inline]
                 pub fn borrow<'owner>(&'owner self) -> derive_mmio::SharedInner<#wrapper_ident<'owner>> {
                     derive_mmio::SharedInner::__new_internal(
                         #wrapper_ident {
@@ -826,6 +830,7 @@ impl FieldParser {
             }
 
             #[doc(hidden)]
+            #[inline]
             #const_token unsafe fn #private_steal_unchecked_func_name(&self, index: usize) -> #inner_mmio_path<'static> {
                 let ptr = unsafe {(*self.ptr).#field_ident.as_mut_ptr().add(index) };
                 unsafe {
@@ -948,6 +953,7 @@ impl FieldParser {
             }
 
             #[doc(hidden)]
+            #[inline]
             #const_token unsafe fn #steal_func_unchecked_name(&self) -> #inner_mmio_path<'static> {
                 let ptr = unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) };
                 unsafe {
