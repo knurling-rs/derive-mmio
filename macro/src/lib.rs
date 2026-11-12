@@ -222,6 +222,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
                 }
             }
 
+            #[automatically_derived]
             impl<const BASE_ADDR: usize> ::core::fmt::Debug for #owned_ident<BASE_ADDR> {
                 fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                     f.debug_tuple(stringify!(#owned_ident))
@@ -245,6 +246,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
             phantom: core::marker::PhantomData<&'a ()>,
         }
 
+        #[automatically_derived]
         impl core::fmt::Debug for #wrapper_ident<'_> {
             fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
                 f.debug_tuple(stringify!(#wrapper_ident))
@@ -284,6 +286,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
             #access_methods_quoted
         }
 
+        #[automatically_derived]
         unsafe impl derive_mmio::_MmioMarker for #wrapper_ident<'_> {}
 
         #(#offset_checks)*
@@ -296,6 +299,7 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         ///
         /// In that case, it it is recommended to [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
         /// on the register block structure.
+        #[automatically_derived]
         unsafe impl core::marker::Send for #wrapper_ident<'_> where #ident: core::marker::Send {}
 
         impl #ident {
