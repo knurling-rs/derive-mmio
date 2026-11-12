@@ -477,11 +477,13 @@ pub struct SharedInner<T>(T);
 
 impl<T> SharedInner<T> {
     #[doc(hidden)]
+    #[inline]
     pub const fn __new_internal(t: T) -> Self {
         Self(t)
     }
 
     /// Get shared access to the value within
+    #[inline]
     pub const fn inner(&self) -> &T {
         &self.0
     }
@@ -490,6 +492,7 @@ impl<T> SharedInner<T> {
 impl<T> Deref for SharedInner<T> {
     type Target = T;
 
+    #[inline]
     fn deref(&self) -> &Self::Target {
         self.inner()
     }

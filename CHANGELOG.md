@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added `offset_bytes` field attribute which allows verifying field offsets.
 - Added `SharedWrite` field attribute, for `&self` writer methods.
 
+### Changed
+
+- Added `#[inline]` to `new_mmio_at` and other generated helpers.
+
 ## [v0.8.0] - 2026-07-21
 
 ### Added
