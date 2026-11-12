@@ -11,6 +11,6 @@ fn main() {
     let mut uart = Uart { data: 0xA };
 
     // Safety: We're pointing at a real object
-    let mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
     send_check(&mmio_uart);
 }

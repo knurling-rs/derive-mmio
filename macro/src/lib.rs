@@ -116,44 +116,74 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         });
     }
 
-    let constructors = if omit_ctor {
-        None
+    let (constructors, deprecated_constructors) = if omit_ctor {
+        (None, None)
     } else {
-        Some(quote! {
-            /// Create a new handle to this peripheral given an address.
-            ///
-            /// # Safety
-            ///
-            /// See the safety notes for [Self::new_mmio].
-            pub const unsafe fn new_mmio_at(addr: usize) -> #wrapper_ident<'static> {
-                Self::new_mmio(addr as *mut #ident)
-            }
+        let deprecation_note = format!("use `{}::new` instead", wrapper_ident);
+        let deprecation_note_at = format!("use `{}::new_at` instead", wrapper_ident);
+        (
+            Some(quote! {
+                impl #wrapper_ident<'static> {
+                    /// Create a new handle to this peripheral given an address.
+                    ///
+                    /// # Safety
+                    ///
+                    /// See the safety notes for [Self::new].
+                    #[inline]
+                    pub const unsafe fn new_at(addr: usize) -> Self {
+                        unsafe { Self::new(addr as *mut #ident) }
+                    }
 
-            /// Create a new handle to this peripheral.
-            ///
-            /// # Safety
-            ///
-            /// The pointer given must have suitable alignment, and point to an object
-            /// which matches the layout given by the structure pointed to.
-            ///
-            /// If you create multiple instances of this handle at the same time,
-            /// you are responsible for ensuring that there are no read-modify-write
-            /// races on any of the registers.
-            ///
-            /// The [core::marker::Send] trait is implemented for the MMIO handle.
-            /// However, there are cases where this implementation might be incorrect, for example
-            /// if an MMIO handle was created for a core-local private address.
-            ///
-            /// In that case, it it is recommended to [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
-            /// on the register block structure.
-            #[inline]
-            pub const unsafe fn new_mmio(ptr: *mut #ident) -> #wrapper_ident<'static> {
-                #wrapper_ident {
-                    ptr,
-                    phantom: core::marker::PhantomData,
+                    /// Create a new handle to this peripheral.
+                    ///
+                    /// # Safety
+                    ///
+                    /// The pointer given must have suitable alignment, and point to an object
+                    /// which matches the layout given by the structure pointed to.
+                    ///
+                    /// If you create multiple instances of this handle at the same time,
+                    /// you are responsible for ensuring that there are no read-modify-write
+                    /// races on any of the registers.
+                    ///
+                    /// The [core::marker::Send] trait is implemented for the MMIO handle.
+                    /// However, there are cases where this implementation might be incorrect, for example
+                    /// if an MMIO handle was created for a core-local private address.
+                    ///
+                    /// In that case, it it is recommended to [un-implement Send](https://doc.rust-lang.org/nomicon/send-and-sync.html).
+                    /// on the register block structure.
+                    #[inline]
+                    pub const unsafe fn new(ptr: *mut #ident) -> Self {
+                        Self {
+                            ptr,
+                            phantom: core::marker::PhantomData,
+                        }
+                    }
                 }
-            }
-        })
+            }),
+            Some(quote! {
+                /// Create a new handle to this peripheral given an address.
+                ///
+                /// # Safety
+                ///
+                #[doc = concat!("See the safety notes for [", stringify!(#wrapper_ident), "::new].")]
+                #[deprecated(since = "0.9.0", note = #deprecation_note_at)]
+                #[inline]
+                pub const unsafe fn new_mmio_at(addr: usize) -> #wrapper_ident<'static> {
+                    unsafe { #wrapper_ident::new_at(addr) }
+                }
+
+                /// Create a new handle to this peripheral.
+                ///
+                /// # Safety
+                ///
+                #[doc = concat!("See the safety notes for [", stringify!(#wrapper_ident), "::new].")]
+                #[deprecated(since = "0.9.0", note = #deprecation_note)]
+                #[inline]
+                pub const unsafe fn new_mmio(ptr: *mut #ident) -> #wrapper_ident<'static> {
+                    unsafe { #wrapper_ident::new(ptr) }
+                }
+            }),
+        )
     };
 
     let owned_handles = if omit_owned {
@@ -298,10 +328,12 @@ fn try_derive_mmio(input: DeriveInput) -> syn::Result<proc_macro2::TokenStream> 
         /// on the register block structure.
         unsafe impl core::marker::Send for #wrapper_ident<'_> where #ident: core::marker::Send {}
 
+        #constructors
+
         impl #ident {
             #bound_check_func
 
-            #constructors
+            #deprecated_constructors
         }
 
         #owned_handles
@@ -829,7 +861,7 @@ impl FieldParser {
             #const_token unsafe fn #private_steal_unchecked_func_name(&self, index: usize) -> #inner_mmio_path<'static> {
                 let ptr = unsafe {(*self.ptr).#field_ident.as_mut_ptr().add(index) };
                 unsafe {
-                    #element_type::new_mmio(ptr)
+                    #inner_mmio_path::new(ptr)
                 }
             }
 
@@ -951,7 +983,7 @@ impl FieldParser {
             #const_token unsafe fn #steal_func_unchecked_name(&self) -> #inner_mmio_path<'static> {
                 let ptr = unsafe { core::ptr::addr_of_mut!((*self.ptr).#field_ident) };
                 unsafe {
-                    #type_path::new_mmio(ptr)
+                    #inner_mmio_path::new(ptr)
                 }
             }
         }

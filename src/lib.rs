@@ -114,12 +114,12 @@ impl MmioUart {
 
     // The control register methods are skipped here for brevity
 }
-// some new methods we add onto your type
-impl Uart {
-    pub const unsafe fn new_mmio(ptr: *mut Uart) -> MmioUart {
+// constructors for the 'handle' type
+impl MmioUart {
+    pub const unsafe fn new(ptr: *mut Uart) -> MmioUart {
         MmioUart { ptr }
     }
-    pub const unsafe fn new_mmio_at(addr: usize) -> MmioUart {
+    pub const unsafe fn new_at(addr: usize) -> MmioUart {
         MmioUart {
             ptr: addr as *mut Uart,
         }
@@ -139,14 +139,14 @@ struct MmioUart {
 
 This structure, called `Mmio${StructName}` is a handle that proxies access
 to that particular peripheral. You create as many as you need by unsafely
-calling one of these methods we added to your struct type.
+calling one of its constructors.
 
 ```rust,ignore
-impl Uart {
-    pub const unsafe fn new_mmio(ptr: *mut Uart) -> MmioUart {
+impl MmioUart {
+    pub const unsafe fn new(ptr: *mut Uart) -> MmioUart {
         MmioUart { ptr }
     }
-    pub const unsafe fn new_mmio_at(addr: usize) -> MmioUart {
+    pub const unsafe fn new_at(addr: usize) -> MmioUart {
         MmioUart {
             ptr: addr as *mut Uart,
         }
@@ -380,7 +380,7 @@ with `#[derive(Mmio)]`:
 ### Outer attributes
 
 - `#[mmio(no_ctors)]`: Omit the generation of constructor functions like
-  `new_mmio_at` and `new_mmio`. This allows users to specify their own custom
+  `new_at` and `new`. This allows users to specify their own custom
   constructors, for example to constrain or check the allowed base addresses.
 - `#[mmio(const_ptr)]`: Pointer getter methods for array field are `const` now.
   Requires Rust 1.83.0 or higher.

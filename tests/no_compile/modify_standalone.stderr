@@ -4,11 +4,8 @@ error: Detected Modify field attribute without read and/or write access specifie
 7 |     #[mmio(Modify)]
   |     ^
 
-error[E0599]: no function or associated item named `new_mmio` found for struct `Uart` in the current scope
-  --> tests/no_compile/modify_standalone.rs:15:40
+error[E0433]: failed to resolve: use of undeclared type `MmioUart`
+  --> tests/no_compile/modify_standalone.rs:15:34
    |
-4  | struct Uart {
-   | ----------- function or associated item `new_mmio` not found for this struct
-...
-15 |     let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
-   |                                        ^^^^^^^^ function or associated item not found in `Uart`
+15 |     let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
+   |                                  ^^^^^^^^ use of undeclared type `MmioUart`

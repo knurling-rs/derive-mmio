@@ -25,7 +25,7 @@ fn main() {
     let mut uart = Uart { array: [inner::UartBank::fake(), inner::UartBank::fake()] };
 
     // Safety: We're pointing at a real object
-    let mut mmio_uart = unsafe { Uart::new_mmio(core::ptr::addr_of_mut!(uart)) };
+    let mut mmio_uart = unsafe { MmioUart::new(core::ptr::addr_of_mut!(uart)) };
 
     // we cannot safely access the array field without bounds checks
 
